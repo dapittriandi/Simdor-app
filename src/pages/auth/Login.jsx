@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { auth, db, signInWithEmailAndPassword } from "../../services/firebase";
+import { auth, db } from "../../services/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
@@ -14,34 +15,37 @@ const Login = () => {
     setError("");
 
     try {
-      // Login menggunakan Firebase Authentication
+      // Login ke Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // eslint-disable-next-line no-unused-vars
       const user = userCredential.user;
 
-      // Query Firestore untuk mencari pengguna berdasarkan email
+      // Ambil data user dari Firestore berdasarkan email
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data(); // Ambil data pertama yang cocok
-        const userPeran = userData.peran; // Ambil field "peran"
+        const userData = querySnapshot.docs[0].data(); // Ambil data user pertama yang ditemukan
+        const { peran, bidang } = userData;
 
-        // Redirect berdasarkan peran pengguna
-        if (userPeran === "cs") {
+        // Simpan user ke localStorage untuk akses di seluruh aplikasi
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        // **Redirect berdasarkan peran**
+        if (peran === "cs") {
           navigate("/dashboard-cs");
-        } else if (userPeran === "admin keuangan") {
+        } else if (peran === "admin keuangan") {
           navigate("/dashboard-keuangan");
-        } else if (userPeran === "admin batubara") {
-          navigate("/dashboard-portofolio");
+        } else if (peran === "admin portofolio") {
+          // **Cek bidang portofolio dan arahkan ke halaman sesuai**
+          const bidangLower = bidang.toLowerCase();
+          navigate(`/orders/${bidangLower}`);
         } else {
-          setError("Peran tidak dikenal.");
+          setError("Peran tidak dikenali.");
         }
       } else {
         setError("Data pengguna tidak ditemukan di Firestore.");
       }
-    // eslint-disable-next-line no-unused-vars
     } catch (err) {
       setError("Login gagal. Periksa email dan password.");
     }

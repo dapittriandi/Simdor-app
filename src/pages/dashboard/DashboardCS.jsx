@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Search, Bell, User, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const data = [
   { month: "Jan", blue: 500, red: 300, brown: 1000 },
