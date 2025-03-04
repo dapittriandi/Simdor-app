@@ -15,8 +15,8 @@ function App() {
         <Route path="/dashboard-cs" element={<Layout><DashboardCS /></Layout>} />
         <Route path="/dashboard-keuangan" element={<Layout><DashboardKeuangan /></Layout>} />
         <Route path="/dashboard-portofolio" element={<Layout><DashboardPortofolio /></Layout>} />
-        <Route path="/orders/:category" element={<Layout><OrdersPage /></Layout>} />
-        <Route path="/order-detail/:id" element={<Layout><OrderDetail /></Layout>} />
+        <Route path="/orders/:portofolio" element={<Layout><OrdersPage /></Layout>} />
+        <Route path="/orders/:portofolio/order-detail/:id" element={<Layout><OrderDetail /></Layout>} />
       </Routes>
     </Router>
   );

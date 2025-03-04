@@ -1,6 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import {useParams, useNavigate } from "react-router-dom";
 
 const OrdersPage = () => {
+  const { portofolio } = useParams();
   const navigate = useNavigate();
 
   // Data dummy (bisa diganti dengan API)
@@ -11,7 +12,7 @@ const OrdersPage = () => {
 
   return (
     <div className="ml-30 p-6">
-      <h2 className="text-2xl font-semibold">Daftar Order Batu Bara</h2>
+      <h2 className="text-2xl font-semibold">Daftar Order Portofolio {portofolio?.toUpperCase()}</h2>
       <div className="overflow-x-auto mt-4">
         <table className="min-w-full border border-gray-300">
           <thead>
@@ -32,7 +33,7 @@ const OrdersPage = () => {
                 <td className="p-2 border">{order.nilai}</td>
                 <td className="p-2 border">
                   <button
-                    onClick={() => navigate(`/order-detail/${order.id}`)}
+                    onClick={() => navigate(`order-detail/${order.id}`)}
                     className="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600"
                   >
                     Detail

@@ -15,31 +15,33 @@ const Login = () => {
     setError("");
 
     try {
-      // Login ke Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      const lowerEmail = email.toLowerCase(); // Konversi email ke lowercase
+
+      // 🔐 Login ke Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, lowerEmail, password);
       const user = userCredential.user;
 
-      // Ambil data user dari Firestore berdasarkan email
+      // 🔎 Ambil data user dari Firestore berdasarkan email
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
+      const q = query(usersRef, where("email", "==", lowerEmail));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data(); // Ambil data user pertama yang ditemukan
+        const userData = querySnapshot.docs[0].data(); // Ambil data pertama
         const { peran, bidang } = userData;
 
-        // Simpan user ke localStorage untuk akses di seluruh aplikasi
+        // 💾 Simpan user ke localStorage agar bisa digunakan di sidebar, dll
         localStorage.setItem("user", JSON.stringify(userData));
 
-        // **Redirect berdasarkan peran**
+        // 📌 **Redirect berdasarkan peran**
         if (peran === "cs") {
           navigate("/dashboard-cs");
         } else if (peran === "admin keuangan") {
           navigate("/dashboard-keuangan");
         } else if (peran === "admin portofolio") {
-          // **Cek bidang portofolio dan arahkan ke halaman sesuai**
-          const bidangLower = bidang.toLowerCase();
-          navigate(`/orders/${bidangLower}`);
+          // **Arahkan ke dashboard dulu, bukan langsung ke orders**
+          navigate("/dashboard-portofolio");
         } else {
           setError("Peran tidak dikenali.");
         }
