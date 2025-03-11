@@ -30,7 +30,7 @@ export default function Sidebar() {
         <nav>
           <ul>
             {/* Dashboard berdasarkan peran */}
-            {user.peran === "cs" && (
+            {user.peran === "customer service" && (
               <li className="mb-2 hover:text-gray-400">
                 <Link to="/dashboard-cs">Dashboard CS</Link>
               </li>
@@ -42,7 +42,12 @@ export default function Sidebar() {
             )}
             {user.peran === "admin portofolio" && (
               <li className="mb-2 hover:text-gray-400">
-                <Link to={`/orders/${user.bidang.toLowerCase()}`}>Dashboard Portofolio</Link>
+                <Link to={`/dashboard-portofolio`}>Dashboard Portofolio</Link>
+              </li>
+            )}
+            {user.peran === "koordinator" && (
+              <li className="mb-2 hover:text-gray-400">
+                <Link to={`/dashboard-koordinator`}>Dashboard Koordinator</Link>
               </li>
             )}
 

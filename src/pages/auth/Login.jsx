@@ -35,13 +35,15 @@ const Login = () => {
         localStorage.setItem("user", JSON.stringify(userData));
 
         // 📌 **Redirect berdasarkan peran**
-        if (peran === "cs") {
+        if (peran === "customer service") {
           navigate("/dashboard-cs");
         } else if (peran === "admin keuangan") {
           navigate("/dashboard-keuangan");
         } else if (peran === "admin portofolio") {
           // **Arahkan ke dashboard dulu, bukan langsung ke orders**
           navigate("/dashboard-portofolio");
+        } else if (peran === "koordinator") {
+          navigate("/dashboard-koordinator");
         } else {
           setError("Peran tidak dikenali.");
         }

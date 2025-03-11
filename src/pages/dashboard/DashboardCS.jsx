@@ -1,61 +1,154 @@
-import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useState, useEffect } from "react";
+import { db } from "../../services/firebase";
+import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-const data = [
-  { month: "Jan", blue: 500, red: 300, brown: 1000 },
-  { month: "Feb", blue: 700, red: 500, brown: 800 },
-  { month: "Mar", blue: 900, red: 700, brown: 900 },
-  { month: "Apr", blue: 200, red: 500, brown: 600 },
-  { month: "May", blue: 800, red: 600, brown: 950 },
-  { month: "Jun", blue: 300, red: 700, brown: 850 },
-  { month: "Jul", blue: 400, red: 500, brown: 900 },
-  { month: "Aug", blue: 600, red: 800, brown: 1000 },
-  { month: "Sep", blue: 700, red: 600, brown: 700 },
-  { month: "Oct", blue: 500, red: 400, brown: 750 },
-  { month: "Nov", blue: 650, red: 500, brown: 800 },
-];
+const DashboardCS = () => {
+  const [summary, setSummary] = useState({
+    totalOrders: 0,
+    processingOrders: 0,
+    completedOrders: 0,
+    recentOrders: [],
+    orderTrends: [],
+  });
 
-export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState("Dashboard");  
+  useEffect(() => {
+    fetchOrderSummary();
+  }, []);
+
+  const fetchOrderSummary = async () => {
+    try {
+      const ordersRef = collection(db, "orders");
+      
+      // Ambil semua order
+      const snapshot = await getDocs(query(ordersRef, orderBy("createdAt", "desc")));
+
+      let totalOrders = snapshot.size;
+      let processingOrders = 0;
+      let completedOrders = 0;
+      let orderTrends = {};
+      let recentOrders = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.statusOrder === "Closed") {
+          completedOrders++;
+        } else {
+          processingOrders++;
+        }
+
+        // Ambil 10 order terbaru berdasarkan createdAt
+        if (recentOrders.length < 10) {
+          recentOrders.push({
+            id: doc.id,
+            pelanggan: data.pelanggan || "-",
+            portofolio: data.portofolio || "-",
+            statusOrder: data.statusOrder || "-",
+            tanggalOrder: data.tanggalOrder?.seconds ? new Date(data.tanggalOrder.seconds * 1000).toLocaleDateString() : "-",
+            createdAt: data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "-",
+          });
+        }
+
+        // Hitung jumlah order per bulan
+        if (data.createdAt?.seconds) {
+          const orderDate = new Date(data.createdAt.seconds * 1000);
+          const monthYear = `${orderDate.getMonth() + 1}/${orderDate.getFullYear()}`;
+          orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
+        }
+      });
+
+      // Konversi orderTrends menjadi array untuk grafik
+      const orderTrendsArray = Object.keys(orderTrends).map((key) => ({
+        bulan: key,
+        jumlah: orderTrends[key],
+      }));
+
+      setSummary({
+        totalOrders,
+        processingOrders,
+        completedOrders,
+        recentOrders,
+        orderTrends: orderTrendsArray,
+      });
+    } catch (error) {
+      console.error("Gagal mengambil ringkasan order:", error);
+    }
+  };
 
   return (
-    <div className="">
+    <div className="p-6 max-w-6xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6">Dashboard Customer Service</h2>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-6 rounded shadow text-center">
-            <h2 className="text-blue-600 text-3xl font-bold">200</h2>
-            <p>Total Order</p>
-          </div>
-          <div className="bg-white p-6 rounded shadow text-center">
-            <h2 className="text-red-600 text-3xl font-bold">100</h2>
-            <p>Proses</p>
-          </div>
-          <div className="bg-white p-6 rounded shadow text-center">
-            <h2 className="text-green-600 text-3xl font-bold">100</h2>
-            <p>Selesai</p>
-          </div>
+      {/* Ringkasan Order */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white shadow-lg p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Total Order</h3>
+          <p className="text-3xl font-bold text-blue-500">{summary.totalOrders}</p>
         </div>
-        
-        {/* Chart */}
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-lg font-bold mb-4">Tren Order</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="blue" stroke="#3b82f6" />
-              <Line type="monotone" dataKey="red" stroke="#ef4444" />
-              <Line type="monotone" dataKey="brown" stroke="#a16207" />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="bg-white shadow-lg p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Order Sedang Diproses</h3>
+          <p className="text-3xl font-bold text-orange-500">{summary.processingOrders}</p>
         </div>
-      </main>
+        <div className="bg-white shadow-lg p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Order Selesai (Closed)</h3>
+          <p className="text-3xl font-bold text-green-500">{summary.completedOrders}</p>
+        </div>
+      </div>
+
+      {/* Daftar Order Terkini */}
+      <div className="bg-white shadow-lg p-6 rounded-lg mb-6">
+        <h3 className="text-lg font-semibold mb-4">Daftar Order Terkini</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200 text-left">
+                <th className="p-2 border">#</th>
+                <th className="p-2 border">Nama Pelanggan</th>
+                <th className="p-2 border">Portofolio</th>
+                <th className="p-2 border">Status Order</th>
+                <th className="p-2 border">Tanggal Order</th>
+                <th className="p-2 border">Tanggal Order Dibuat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.recentOrders.length > 0 ? (
+                summary.recentOrders.map((order, index) => (
+                  <tr key={order.id} className="border">
+                    <td className="p-2 border">{index + 1}</td>
+                    <td className="p-2 border">{order.pelanggan}</td>
+                    <td className="p-2 border">{order.portofolio}</td>
+                    <td className="p-2 border">{order.statusOrder}</td>
+                    <td className="p-2 border">{order.tanggalOrder}</td>
+                    <td className="p-2 border">{order.createdAt}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="border p-2 text-center text-gray-500">
+                    Tidak ada order terbaru
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Grafik Tren Order */}
+      <div className="bg-white shadow-lg p-6 rounded-lg">
+        <h3 className="text-lg font-semibold mb-4">Tren Order per Bulan</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={summary.orderTrends}>
+            <XAxis dataKey="bulan" />
+            <YAxis />
+            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" />
+            <Bar dataKey="jumlah" fill="#8884d8" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
-}
+};
+
+export default DashboardCS;

@@ -3,14 +3,13 @@ import { db } from "../../services/firebase";
 import { collection, query, getDocs } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-const DashboardKeuangan = () => {
+const DashboardKoordinator = () => {
   const [summary, setSummary] = useState({
     totalOrders: 0,
-    inProcessOrders: 0,
-    completedOrders: 0,
     totalProforma: 0,
-    revenueByPortofolio: {},
+    statusCounts: {},
     orderTrends: [],
+    revenueByPortofolio: {},
   });
 
   useEffect(() => {
@@ -23,9 +22,16 @@ const DashboardKeuangan = () => {
       const snapshot = await getDocs(query(ordersRef));
 
       let totalOrders = 0;
-      let inProcessOrders = 0;
-      let completedOrders = 0;
       let totalProforma = 0;
+      let statusCounts = {
+        Draft: 0,
+        Diproses: 0,
+        Selesai: 0,
+        Closed: 0,
+        Hold: 0,
+        "Next Order": 0,
+        Archecking: 0,
+      };
       let orderTrends = {};
       let revenueByPortofolio = {
         Batubara: 0,
@@ -47,8 +53,9 @@ const DashboardKeuangan = () => {
         totalProforma += Number(data.nilaiProforma) || 0;
 
         // Hitung jumlah order berdasarkan status
-        if (data.statusOrder === "Diproses") inProcessOrders++;
-        if (data.statusOrder === "Selesai") completedOrders++;
+        if (data.statusOrder) {
+          statusCounts[data.statusOrder] = (statusCounts[data.statusOrder] || 0) + 1;
+        }
 
         // Hitung jumlah order per bulan
         if (data.tanggalOrder?.seconds) {
@@ -72,11 +79,10 @@ const DashboardKeuangan = () => {
 
       setSummary({
         totalOrders,
-        inProcessOrders,
-        completedOrders,
         totalProforma,
-        revenueByPortofolio,
+        statusCounts,
         orderTrends: orderTrendsArray,
+        revenueByPortofolio,
       });
     } catch (error) {
       console.error("Gagal mengambil ringkasan order:", error);
@@ -85,7 +91,7 @@ const DashboardKeuangan = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">📊 Dashboard Keuangan</h2>
+      <h2 className="text-2xl font-bold mb-6">📊 Dashboard Koordinator</h2>
 
       {/* Ringkasan Order */}
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -94,12 +100,18 @@ const DashboardKeuangan = () => {
           <p className="text-3xl font-bold text-blue-500">{summary.totalOrders}</p>
         </div>
         <div className="bg-white shadow-lg p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Order Diproses</h3>
-          <p className="text-3xl font-bold text-orange-500">{summary.inProcessOrders}</p>
+          <h3 className="text-lg font-semibold">Total Nilai Proforma</h3>
+          <p className="text-3xl font-bold text-green-500">Rp {summary.totalProforma.toLocaleString()}</p>
         </div>
         <div className="bg-white shadow-lg p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Order Selesai</h3>
-          <p className="text-3xl font-bold text-green-500">{summary.completedOrders}</p>
+          <h3 className="text-lg font-semibold">Status Order</h3>
+          <div className="space-y-2 text-sm">
+            {Object.entries(summary.statusCounts).map(([status, count]) => (
+              <p key={status}>
+                <strong>{status}:</strong> {count}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -133,4 +145,4 @@ const DashboardKeuangan = () => {
   );
 };
 
-export default DashboardKeuangan;
+export default DashboardKoordinator;
