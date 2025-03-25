@@ -21,17 +21,26 @@ const LengkapiOrder = () => {
     fakturPajak: null,
   });
 
-  /** ✅ Konversi Firestore Timestamp ke format "YYYY-MM-DD" */
-  const formatDateForInput = (timestamp) => {
-    if (!timestamp || !timestamp.seconds) return "";
-    return new Date(timestamp.seconds * 1000).toISOString().split("T")[0];
-  };
-
-  // Pastikan tidak ada "Invalid time value" saat memproses tanggal
-const handleDateConversion = (timestamp) => {
-  if (!timestamp || !timestamp.seconds) return ""; // Jika null/undefined, kembalikan string kosong
-  return new Date(timestamp.seconds * 1000).toISOString().split("T")[0]; // Konversi ke format YYYY-MM-DD
+// **Mapping Custom Label untuk Field Tanggal**
+const dateLabels = {
+  tanggalStatusOrder: "Status Order",
+  tanggalSerahOrderKeCs: "Tanggal Serah Order ke CS",
+  tanggalPekerjaan: "Tanggal Pekerjaan",
+  tanggalOrder: "Tanggal Order",
+  tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
+  tanggalPengirimanFaktur: "Tanggal Kirim Faktur Pajak",
+  proformaSerahKeOps: "Proforma Serah ke Ops",
+  proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
+  distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
+  distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
 };
+
+  const formatDateForInput = (timestamp) => {
+    if (!timestamp || !timestamp.seconds) return ""; // Jika null/undefined, return string kosong
+    const date = timestamp.toDate();
+    return date.toISOString().split("T")[0]; // Format YYYY-MM-DD
+  };
+  
 
 /** ✅ Ambil data dari Firestore */
 useEffect(() => {
@@ -42,11 +51,11 @@ useEffect(() => {
       if (data) {
         setFormData({
           ...data,
-          tanggalStatusOrder: formatDateForInput(data.tanggalStatusOrder),
-          tanggalSerahOrderKeCs: formatDateForInput(data.tanggalSerahOrderKeCs),
-          tanggalPekerjaan: formatDateForInput(data.tanggalPekerjaan),
-          tanggalPengirimanInvoice: formatDateForInput(data.tanggalPengirimanInvoice),
-          tanggalPengirimanFaktur: formatDateForInput(data.tanggalPengirimanFaktur),
+          tanggalStatusOrder: data.tanggalStatusOrder instanceof Timestamp ? data.tanggalStatusOrder : null,
+          tanggalSerahOrderKeCs: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
+          tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
+          tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
+          tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
         });
       }
     } catch (error) {
@@ -54,6 +63,7 @@ useEffect(() => {
     }
     setLoading(false);
   };
+  
 
   fetchOrder();
 }, [id]);
@@ -111,7 +121,7 @@ useEffect(() => {
   const handleChange = (e) => {
     const { name, value, type } = e.target;
   
-    let newValue = value;
+    let newValue = value.trim() === "" ? null : value;
     if (type === "number") {
       newValue = value ? Number(value) : null; // Konversi string ke number, kosong jadi null
     } else if (type === "checkbox") {
@@ -132,7 +142,7 @@ useEffect(() => {
   const handleDateChange = (e) => {
     const { name, value } = e.target;
   
-    let newValue = null;
+    let newValue = formData[name];
     if (value) {
       const parsedDate = new Date(value);
       if (!isNaN(parsedDate)) {
@@ -186,6 +196,7 @@ useEffect(() => {
   
     try {
       // Upload semua file secara paralel
+      const existingData = await getOrderById(id);
       const uploadedFiles = await Promise.all(
         Object.entries(files).map(async ([key, file]) => {
           if (file) {
@@ -211,6 +222,7 @@ useEffect(() => {
   
       // Perbarui data di Firestore
       const updatedData = {
+        ...existingData,
         ...formData,
         updatedAt: Timestamp.now(),
         documents: {
@@ -219,23 +231,21 @@ useEffect(() => {
         },
       };
   
-      console.log("🔥 Data sebelum update:", updatedData); // Tambahkan log untuk debug
+      console.log("Data sebelum update:", updatedData); // Tambahkan log untuk debug
   
       await updateOrder(id, updatedData);
-      alert("✅ Data berhasil diperbarui!");
+      alert("Data berhasil diperbarui!");
       navigate(`/orders/${portofolio}/detail/${id}`);
     } catch (error) {
-      console.error("❌ Gagal mengunggah file:", error);
-      alert("⚠️ Terjadi kesalahan saat mengunggah file.");
+      console.error("Gagal mengunggah file:", error);
+      alert("Terjadi kesalahan saat mengunggah file.");
     } finally {
       setLoading(false);
     }
   };
   
-  
-  
-
   if (loading) return <p className="text-center text-gray-600">Loading...</p>;
+  if (!formData) return <p className="text-center text-red-500">Data tidak ditemukan!</p>;
 
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg">
@@ -261,7 +271,7 @@ useEffect(() => {
 {userPeran === "admin portofolio" && (
           <>
             <label>Tanggal Status Order</label>
-                    <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder || ""} onChange={handleDateChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                    <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""} onChange={handleDateChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
 
           </>
         )}
@@ -360,7 +370,7 @@ useEffect(() => {
 {userPeran === "admin portofolio" && (
           <>
             <label>Nomor Si/Spk</label>
-                    <input type="text" name="nilaiProforma" value={formData.noSiSpk || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                    <input type="text" name="noSiSpk" value={formData.noSiSpk || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
 
           </>
         )}
@@ -560,20 +570,22 @@ useEffect(() => {
         )}
 
         {/* Input Tanggal */}
-        {["tanggalOrder", "tanggalSerahOrderKeCs", "tanggalPekerjaan", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "proformaSerahKeOps", "proformaSerahKeDukbis", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerimaTanggal"].map((key) => (
-          fieldsToShow.includes(key) && (
-            <div key={key}>
-              <label>{key}</label>
-              <input 
-  type="date" 
-  name={key} 
-  value={formData[key] ? handleDateConversion(formData[key]) : ""}
-  onChange={handleDateChange} 
-  className="w-full p-2 border rounded-lg" 
-/>
-            </div>
-          )
-        ))}
+        <div className="grid grid-cols-2 gap-4">
+  {Object.keys(dateLabels).map((key) =>
+    fieldsToShow.includes(key) ? (
+      <div key={key} className="flex flex-col">
+        <label className="font-semibold text-gray-700">{dateLabels[key]}</label>
+        <input
+          type="date"
+          name={key}
+          value={formData[key] ? formatDateForInput(formData[key]) : ""}
+          onChange={handleDateChange}
+          className="w-full p-2 border rounded-lg bg-white text-gray-700"
+        />
+      </div>
+    ) : null
+  )}
+</div>
 
             <label>Distribusi Sertifikat Pengirim</label>
                     <input type="text" name="distribusiSertifikatPengirim" value={formData.distribusiSertifikatPengirim || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />

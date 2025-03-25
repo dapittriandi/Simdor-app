@@ -59,6 +59,7 @@ const OrderDetail = () => {
       "admin portofolio": [
         "pelanggan",
         "statusOrder",
+        "tanggalStatusOrder",
         "tanggalSerahOrderKeCs",
         "tanggalPekerjaan",
         "proformaSerahKeOps",
@@ -116,9 +117,14 @@ const OrderDetail = () => {
   const fieldTitles = [
     { key: "pelanggan", label: "Nama Pelanggan" },
     { key: "statusOrder", label: "Status Order" },
+    { key: "tanggalStatusOrder", label: "Tanggal Status Order", isDate: true},
+    { key: "tanggalSerahOrderKeCs", label: "Tanggal Serah Order Ke Cs", isDate: true},
     { key: "nomorOrder", label: "Nomor Order" },
     { key: "tanggalOrder", label: "Tanggal Order", isDate: true },
+    { key: "proformaSerahKeOps", label: "Proforma diserahkan ke Operasional", isDate: true },
+    { key: "proformaSerahKeDukbis", label: "Proforma diserahKan Ke dukbis", isDate: true },
     { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan", isDate: true },
+    { key: "jenisPekerjaan", label: "Jenis Pekerjaan" },
     { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
     { key: "noSiSpk", label: "No SI/SPK" },
     { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06" },

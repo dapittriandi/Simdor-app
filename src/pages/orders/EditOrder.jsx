@@ -30,6 +30,13 @@ const EditOrder = () => {
     fetchOrder();
   }, [id]);
 
+  const formatDateForInput = (timestamp) => {
+    if (!timestamp || !timestamp.seconds) return ""; // Jika null/undefined, return string kosong
+    const date = timestamp.toDate();
+    return date.toISOString().split("T")[0]; // Format YYYY-MM-DD
+  };
+  
+
   // **Mapping Semua Field**
   const allFields = {
     pelanggan: "Pelanggan",
@@ -226,7 +233,7 @@ const handleDeleteFile = async (fileKey) => {
 {userPeran === "admin portofolio" && (
           <>
             <label>Tanggal Status Order</label>
-                    <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                    <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""} onChange={handleDateChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
 
           </>
         )}
@@ -556,7 +563,6 @@ const handleDeleteFile = async (fileKey) => {
   }
   return null;
 })}
-
 
             <label>Distribusi Sertifikat Pengirim</label>
                     <input type="text" name="distribusiSertifikatPengirim" value={formData.distribusiSertifikatPengirim || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />

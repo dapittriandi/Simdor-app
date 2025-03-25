@@ -25,12 +25,45 @@ const CreateOrder = () => {
     tonaseDS: "",
   });
 
+  const formatDateForInput = (timestamp) => {
+    if (!timestamp) return ""; // Handle jika data kosong
+    return new Date(timestamp.seconds * 1000).toISOString().split("T")[0]; // Format YYYY-MM-DD
+  };
+  
+
   const [files, setFiles] = useState({ siSpk: null });
 
-  const handleChange = (e) => {
+  const handleDateChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    
+    let newValue = null;
+    if (value) {
+      const parsedDate = new Date(value);
+      if (!isNaN(parsedDate)) {
+        newValue = Timestamp.fromDate(parsedDate);
+      }
+    }
+  
+    setFormData({ ...formData, [name]: newValue });
+  
+    console.log("📅 Perubahan tanggal:", name, newValue); // Debugging
   };
+  
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
+  
+    let newValue = value;
+  
+    // 🔥 Jika input bertipe tanggal, ubah ke Timestamp
+    if (type === "date") {
+      newValue = value ? Timestamp.fromDate(new Date(value)) : null;
+    }
+  
+    setFormData({ ...formData, [name]: newValue });
+  
+    console.log("✏️ Perubahan:", name, newValue); // Debug
+  };
+  
 
   const handleFileChange = (e) => {
     setFiles({ ...files, siSpk: e.target.files[0] });
@@ -68,8 +101,8 @@ const CreateOrder = () => {
         portofolio,
         pelanggan: formData.pelanggan,
         statusOrder: formData.statusOrder,
-        tanggalStatusOrder: Timestamp.fromDate(new Date(formData.tanggalStatusOrder)),
-        tanggalSerahOrderKeCs: Timestamp.fromDate(new Date(formData.tanggalSerahOrderKeCs)),
+        tanggalStatusOrder: formData.tanggalStatusOrder ? formData.tanggalStatusOrder : null,
+        tanggalSerahOrderKeCs: formData.tanggalSerahOrderKeCs ? formData.tanggalSerahOrderKeCs : null,
         jenisPekerjaan: formData.jenisPekerjaan,
         lokasiPekerjaan: formData.lokasiPekerjaan,
         noSiSpk: formData.noSiSpk || "",
@@ -140,12 +173,12 @@ const CreateOrder = () => {
 
         <div>
           <label className="block font-medium">Tanggal Status Order *</label>
-          <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder} onChange={handleChange} className="w-full p-2 border rounded" required />
+          <input type="date" name="tanggalStatusOrder" value={formatDateForInput(formData.tanggalStatusOrder)} onChange={handleDateChange} className="w-full p-2 border rounded" required />
         </div>
 
         <div>
           <label className="block font-medium">Tanggal Serah Order ke CS *</label>
-          <input type="date" name="tanggalSerahOrderKeCs" value={formData.tanggalSerahOrderKeCs} onChange={handleChange} className="w-full p-2 border rounded" required />
+          <input type="date" name="tanggalSerahOrderKeCs" value={formatDateForInput(formData.tanggalSerahOrderKeCs)} onChange={handleDateChange} className="w-full p-2 border rounded" required />
         </div>
 
         <div>
