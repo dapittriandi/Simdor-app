@@ -3,6 +3,14 @@ import { db } from "../../services/firebase";
 import { collection, query, getDocs } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
+// Fungsi untuk mengkapitalisasi huruf pertama setiap kata
+const capitalizeFirstLetter = (str) => {
+  return str
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 const DashboardKoordinator = () => {
   const [summary, setSummary] = useState({
     totalOrders: 0,
@@ -23,28 +31,15 @@ const DashboardKoordinator = () => {
 
       let totalOrders = 0;
       let totalProforma = 0;
-      let statusCounts = {
-        Draft: 0,
-        Diproses: 0,
-        Selesai: 0,
-        Closed: 0,
-        Hold: 0,
-        "Next Order": 0,
-        Archecking: 0,
+
+      const statusCounts = {
+        Draft: 0, Diproses: 0, Selesai: 0, Closed: 0, Hold: 0, "Next Order": 0, Archecking: 0,
       };
-      let orderTrends = {};
-      let revenueByPortofolio = {
-        Batubara: 0,
-        KSP: 0,
-        PIK: 0,
-        Industri: 0,
-        HMPM: 0,
-        AEBT: 0,
-        Mineral: 0,
-        Halal: 0,
-        Laboratorium: 0,
-        SERCO: 0,
-        LSI: 0,
+
+      const orderTrends = {};
+      const revenueByPortofolio = {
+        Batubara: 0, KSP: 0, PIK: 0, Industri: 0, HMPM: 0, AEBT: 0, Mineral: 0,
+        Halal: 0, Laboratorium: 0, SERCO: 0, LSI: 0,
       };
 
       snapshot.forEach((doc) => {
@@ -53,8 +48,8 @@ const DashboardKoordinator = () => {
         totalProforma += Number(data.nilaiProforma) || 0;
 
         // Hitung jumlah order berdasarkan status
-        if (data.statusOrder) {
-          statusCounts[data.statusOrder] = (statusCounts[data.statusOrder] || 0) + 1;
+        if (data.statusOrder && statusCounts.hasOwnProperty(data.statusOrder)) {
+          statusCounts[data.statusOrder] += 1;
         }
 
         // Hitung jumlah order per bulan
@@ -64,18 +59,25 @@ const DashboardKoordinator = () => {
           orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
         }
 
-        // Hitung total pendapatan per portofolio
+        // Format portofolio agar cocok dengan daftar tetap
         if (data.portofolio) {
-          revenueByPortofolio[data.portofolio] =
-            (revenueByPortofolio[data.portofolio] || 0) + (Number(data.nilaiProforma) || 0);
+          const formattedPortofolio = capitalizeFirstLetter(data.portofolio.trim());
+
+          if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
+            revenueByPortofolio[formattedPortofolio] += Number(data.nilaiProforma) || 0;
+          } else {
+            console.warn(`⚠️ Portofolio tidak dikenal: ${formattedPortofolio}`);
+          }
         }
       });
 
       // Konversi orderTrends menjadi array untuk grafik
-      const orderTrendsArray = Object.keys(orderTrends).map((key) => ({
-        bulan: key,
-        jumlah: orderTrends[key],
-      }));
+      const orderTrendsArray = Object.keys(orderTrends)
+        .sort((a, b) => new Date(a) - new Date(b))
+        .map((key) => ({
+          bulan: key,
+          jumlah: orderTrends[key],
+        }));
 
       setSummary({
         totalOrders,
@@ -88,6 +90,9 @@ const DashboardKoordinator = () => {
       console.error("Gagal mengambil ringkasan order:", error);
     }
   };
+
+  const statusList = ["Draft", "Diproses", "Selesai", "Closed", "Hold", "Next Order", "Archecking"];
+  const portofolioList = ["Batubara", "KSP", "PIK", "Industri", "HMPM", "AEBT", "Mineral", "Halal", "Laboratorium", "SERCO", "LSI"];
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -106,9 +111,9 @@ const DashboardKoordinator = () => {
         <div className="bg-white shadow-lg p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Status Order</h3>
           <div className="space-y-2 text-sm">
-            {Object.entries(summary.statusCounts).map(([status, count]) => (
+            {statusList.map((status) => (
               <p key={status}>
-                <strong>{status}:</strong> {count}
+                <strong>{status}:</strong> {summary.statusCounts[status] || 0}
               </p>
             ))}
           </div>
@@ -119,10 +124,12 @@ const DashboardKoordinator = () => {
       <div className="bg-white shadow-lg p-6 rounded-lg mb-6">
         <h3 className="text-lg font-semibold mb-4">💰 Pendapatan per Portofolio</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Object.entries(summary.revenueByPortofolio).map(([portofolio, revenue]) => (
+          {portofolioList.map((portofolio) => (
             <div key={portofolio} className="p-4 bg-gray-100 rounded-lg">
               <p className="text-md font-semibold">{portofolio.toUpperCase()}</p>
-              <p className="text-lg font-bold text-green-600">Rp {revenue.toLocaleString()}</p>
+              <p className="text-lg font-bold text-green-600">
+                Rp {summary.revenueByPortofolio[portofolio]?.toLocaleString() || "0"}
+              </p>
             </div>
           ))}
         </div>
