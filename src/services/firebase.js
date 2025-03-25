@@ -1,7 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, connectFirestoreEmulator  } from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -23,5 +24,13 @@ const app = initializeApp(firebaseConfig);
 // Mendapatkan instance auth dan firestore
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-export { auth, db, signInWithEmailAndPassword, doc, getDoc };
+// Gunakan Firestore Emulator
+if (window.location.hostname === "localhost") {
+  // eslint-disable-next-line no-undef
+  // connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  // connectStorageEmulator(storage, "127.0.0.1", 9199);
+}
+
+export { auth, db, signInWithEmailAndPassword, doc, getDoc, storage  };

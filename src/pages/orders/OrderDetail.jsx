@@ -19,9 +19,12 @@ const OrderDetail = () => {
     const fetchOrder = async () => {
       setLoading(true);
       setError(null);
-
+  
       try {
+        console.log("Fetching order with ID:", id);
         const data = await getOrderById(id);
+        console.log("Order Data:", data);
+  
         if (data) {
           setOrder(data);
         } else {
@@ -33,8 +36,10 @@ const OrderDetail = () => {
       }
       setLoading(false);
     };
+  
     fetchOrder();
   }, [id]);
+  
 
   // Fungsi untuk menampilkan tanggal dengan format yang rapi
   const formatDate = (value) => {
@@ -68,6 +73,7 @@ const OrderDetail = () => {
         "tonaseDS",
         "nilaiProforma",
       ],
+      "koordinator": [],
       "customer service": ["nomorOrder", "tanggalOrder"],
       "admin keuangan": [
         "tanggalPengirimanInvoice",
@@ -115,7 +121,6 @@ const OrderDetail = () => {
     { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan", isDate: true },
     { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
     { key: "noSiSpk", label: "No SI/SPK" },
-    { key: "sertifikatPM06", label: "Sertifikat PM06" },
     { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06" },
     { key: "noSertifikat", label: "Nomor Sertifikat" },
     { key: "jenisSertifikat", label: "Jenis Sertifikat" },
@@ -151,6 +156,8 @@ const OrderDetail = () => {
       </div>
 
       {/* Tombol Aksi */}
+      {userPeran !== "koordinator" && (
+    <>
       <div className="mt-6 flex justify-between">
         {canEdit ? (
           <button onClick={() => navigate(`/orders/${portofolio}/detail/edit/${id}`)}
@@ -168,8 +175,11 @@ const OrderDetail = () => {
             className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
             Hapus Order
           </button>
+          
         )}
       </div>
+      </>
+  )}
     </div>
   );
 };

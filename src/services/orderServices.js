@@ -1,5 +1,13 @@
 import { db } from "./firebase";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
+
+export const getOrders = async () => {
+  const querySnapshot = await getDocs(collection(db, "orders"));
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+};
 
 export const getOrderById = async (id) => {
   const orderRef = doc(db, "orders", id);

@@ -11,6 +11,8 @@ import OrdersPage from "./pages/orders/OrdersPage";
 import EditOrder from "./pages/orders/EditOrder";
 import DashboardKoordinator from "./pages/dashboard/DashboardKoordinator";
 import LaporanOrders from "./pages/reports/LaporanOrders";
+import DokumenOrder from "./pages/documents/DokumenOrder";
+import ProfilePage from "./pages/profile/ProfilePage";
 
 function App() {
   return (
@@ -27,11 +29,9 @@ function App() {
         <Route path="/orders/:portofolio/detail/lengkapi/:id" element={<Layout><LengkapiOrder />
         </Layout>} />
         <Route path="/orders/:portofolio/detail/edit/:id" element={<Layout><EditOrder /></Layout>} />
+        <Route path="/documents" element={<Layout><DokumenOrder /></Layout>} />
         <Route path="/laporan" element={<Layout><LaporanOrders /></Layout>} />
-
-
-
-
+        <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
 
       </Routes>
     </Router>
