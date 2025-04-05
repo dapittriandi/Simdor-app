@@ -3,37 +3,39 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getOrderById, updateOrder } from "../../services/orderServices";
 import { Timestamp } from "firebase/firestore";
 import { uploadToCloudinary } from "../../services/cloudinaryService";
-import { FiDownload } from "react-icons/fi";
+import { FiDownload, FiFile, FiTrash2, FiEdit, FiEye, FiUpload, FiCalendar, FiCheck } from "react-icons/fi";
 
 const LengkapiOrder = () => {
   const { portofolio, id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const userData = JSON.parse(localStorage.getItem("user"));
   const userPeran = userData?.peran || "";
 
   const [files, setFiles] = useState({
     noSiSpk: null,
-    sertifikatPM06: null,
+    noSertifikatPM06: null,
     noSertifikat: null,
     nomorInvoice: null,
     fakturPajak: null,
   });
 
-// **Mapping Custom Label untuk Field Tanggal**
-const dateLabels = {
-  tanggalStatusOrder: "Status Order",
-  tanggalSerahOrderKeCs: "Tanggal Serah Order ke CS",
-  tanggalPekerjaan: "Tanggal Pekerjaan",
-  tanggalOrder: "Tanggal Order",
-  tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
-  tanggalPengirimanFaktur: "Tanggal Kirim Faktur Pajak",
-  proformaSerahKeOps: "Proforma Serah ke Ops",
-  proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
-  distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
-  distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
-};
+  // Mapping Custom Label untuk Field Tanggal
+  const dateLabels = {
+    tanggalStatusOrder: "Status Order",
+    tanggalSerahOrderKeCs: "Tanggal Serah Order ke CS",
+    tanggalPekerjaan: "Tanggal Pekerjaan",
+    tanggalOrder: "Tanggal Order",
+    tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
+    tanggalPengirimanFaktur: "Tanggal Kirim Faktur Pajak",
+    proformaSerahKeOps: "Proforma Serah ke Ops",
+    proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
+    distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
+    distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
+  };
 
   const formatDateForInput = (timestamp) => {
     if (!timestamp || !timestamp.seconds) return ""; // Jika null/undefined, return string kosong
@@ -41,32 +43,32 @@ const dateLabels = {
     return date.toISOString().split("T")[0]; // Format YYYY-MM-DD
   };
   
-
-/** ✅ Ambil data dari Firestore */
-useEffect(() => {
-  const fetchOrder = async () => {
-    setLoading(true);
-    try {
-      const data = await getOrderById(id);
-      if (data) {
-        setFormData({
-          ...data,
-          tanggalStatusOrder: data.tanggalStatusOrder instanceof Timestamp ? data.tanggalStatusOrder : null,
-          tanggalSerahOrderKeCs: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
-          tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
-          tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
-          tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
-        });
+  // Ambil data dari Firestore
+  useEffect(() => {
+    setMounted(true);
+    const fetchOrder = async () => {
+      setLoading(true);
+      try {
+        const data = await getOrderById(id);
+        if (data) {
+          setFormData({
+            ...data,
+            tanggalStatusOrder: data.tanggalStatusOrder instanceof Timestamp ? data.tanggalStatusOrder : null,
+            tanggalSerahOrderKeCs: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
+            tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
+            tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
+            tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error fetching order:", error);
       }
-    } catch (error) {
-      console.error("❌ Error fetching order:", error);
-    }
-    setLoading(false);
-  };
-  
-
-  fetchOrder();
-}, [id]);
+      setLoading(false);
+    };
+    
+    fetchOrder();
+    return () => setMounted(false);
+  }, [id]);
 
   // Hak akses masing-masing peran
   const editableFields = {
@@ -134,15 +136,12 @@ useEffect(() => {
       ...prevData,
       [name]: newValue,
     }));
-  
-    console.log("✏️ Perubahan formData:", name, newValue); // Debug perubahan state
   };
-  
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
   
-    let newValue = formData[name];
+    let newValue = null;
     if (value) {
       const parsedDate = new Date(value);
       if (!isNaN(parsedDate)) {
@@ -154,10 +153,7 @@ useEffect(() => {
       ...prevData,
       [name]: newValue,
     }));
-  
-    console.log("📅 Perubahan tanggal:", name, newValue); // Debug
   };
-  
 
   const handleFileChange = async (e) => {
     const { name, files } = e.target;
@@ -189,10 +185,100 @@ useEffect(() => {
       setLoading(false);
     }
   };
+
+  const handleFormattedProforma = (e) => {
+    const input = e.target.value;
+    const rawValue = input.replace(/\D/g, ""); // hanya angka
+    const formatted = rawValue ? Number(rawValue).toLocaleString("id-ID") : "";
+  
+    setFormData((prev) => ({
+      ...prev,
+      nilaiProforma: formatted
+    }));
+  };
+  
+
+  // Tambahkan fungsi validasi sebelum handleSubmit
+const validateFormData = () => {
+  const errors = [];
+  
+  // Validasi faktur pajak (Admin Keuangan)
+  if (userPeran === "admin keuangan") {
+    // Cek faktur pajak dan file faktur harus diisi bersama-sama
+    const hasFakturPajak = formData.fakturPajak && formData.fakturPajak.trim() !== "";
+    const hasFakturPajakFile = formData.documents?.fakturPajak || files.fakturPajak;
+    
+    if ((hasFakturPajak && !hasFakturPajakFile) || (!hasFakturPajak && hasFakturPajakFile)) {
+      errors.push("Faktur Pajak dan File Faktur Pajak harus diisi bersamaan.");
+    }
+    
+    // Cek nomor invoice dan file invoice harus diisi bersama-sama
+    const hasNomorInvoice = formData.nomorInvoice && formData.nomorInvoice.trim() !== "";
+    const hasInvoiceFile = formData.documents?.invoice || files.nomorInvoice;
+    
+    if ((hasNomorInvoice && !hasInvoiceFile) || (!hasNomorInvoice && hasInvoiceFile)) {
+      errors.push("Nomor Invoice dan File Invoice harus diisi bersamaan.");
+    }
+  }
+  
+  // Validasi Si/Spk (Admin Portofolio)
+  if (userPeran === "admin portofolio") {
+    const hasNoSiSpk = formData.noSiSpk && formData.noSiSpk.trim() !== "";
+    const hasSiSpkFile = formData.documents?.siSpk || files.noSiSpk;
+    
+    if ((hasNoSiSpk && !hasSiSpkFile) || (!hasNoSiSpk && hasSiSpkFile)) {
+      errors.push("Nomor Si/Spk dan File Si/Spk harus diisi bersamaan.");
+    }
+    
+    // Validasi sertifikat PM06
+    const isSertifikatPM06Ada = formData.keteranganSertifikatPM06 === "Ada";
+    
+    if (isSertifikatPM06Ada) {
+      const hasNoSertifikatPM06 = formData.noSertifikatPM06 && formData.noSertifikatPM06.trim() !== "";
+      const hasSertifikatPM06File = formData.documents?.sertifikatPM06 || files.sertifikatPM06;
+      
+      if (!hasNoSertifikatPM06 || !hasSertifikatPM06File) {
+        errors.push("Nomor Sertifikat PM06 dan File Sertifikat PM06 wajib diisi jika keterangan 'Ada'.");
+      }
+    }
+    
+    // Validasi untuk sertifikat utama
+    const isSertifikatTerbit = formData.jenisSertifikat && formData.jenisSertifikat !== "Tidak Terbit Sertifikat";
+    
+    if (isSertifikatTerbit) {
+      const hasNoSertifikat = formData.noSertifikat && formData.noSertifikat.trim() !== "";
+      const hasSertifikatFile = formData.documents?.sertifikat || files.noSertifikat;
+      
+      if (!hasNoSertifikat || !hasSertifikatFile) {
+        errors.push("Nomor Sertifikat dan File Sertifikat wajib diisi jika jenis sertifikat bukan 'Tidak Terbit Sertifikat'.");
+      }
+    }
+  }
+  
+  return errors;
+};
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validasi form data terlebih dahulu
+    const validationErrors = validateFormData();
+  
+    if (validationErrors.length > 0) {
+      // Tampilkan pesan error
+      alert(`Error:\n${validationErrors.join('\n')}`);
+      return; // Hentikan proses submit
+    }
+
+    const payload = {
+      ...formData,
+      nilaiProforma: formData.nilaiProforma 
+        ? Number(formData.nilaiProforma.replace(/\./g, "")) 
+        : null
+    };
+
     setLoading(true);
+    setSaving(true);
   
     try {
       // Upload semua file secara paralel
@@ -223,15 +309,13 @@ useEffect(() => {
       // Perbarui data di Firestore
       const updatedData = {
         ...existingData,
-        ...formData,
+        ...payload,
         updatedAt: Timestamp.now(),
         documents: {
           ...formData.documents,
           ...uploadedDocuments,
         },
       };
-  
-      console.log("Data sebelum update:", updatedData); // Tambahkan log untuk debug
   
       await updateOrder(id, updatedData);
       alert("Data berhasil diperbarui!");
@@ -241,362 +325,515 @@ useEffect(() => {
       alert("Terjadi kesalahan saat mengunggah file.");
     } finally {
       setLoading(false);
+      setSaving(false);
     }
   };
+
+  // Tambahkan/modifikasi di useEffect untuk set default jenis sertifikat
+useEffect(() => {
+  setMounted(true);
+  const fetchOrder = async () => {
+    setLoading(true);
+    try {
+      const data = await getOrderById(id);
+      if (data) {
+        setFormData({
+          ...data,
+          jenisSertifikat: data.jenisSertifikat || "Tidak Terbit Sertifikat", // Set default jika belum ada
+          tanggalStatusOrder: data.tanggalStatusOrder instanceof Timestamp ? data.tanggalStatusOrder : null,
+          tanggalSerahOrderKeCs: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
+          tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
+          tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
+          tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error fetching order:", error);
+    }
+    setLoading(false);
+  };
   
-  if (loading) return <p className="text-center text-gray-600">Loading...</p>;
-  if (!formData) return <p className="text-center text-red-500">Data tidak ditemukan!</p>;
+  fetchOrder();
+  return () => setMounted(false);
+}, [id]);
+  
+  const renderFileUpload = (fileKey, displayName) => {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+          <FiFile className="mr-2 text-blue-500" /> {displayName}
+        </label>
+        {formData.documents?.[fileKey] ? (
+          <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 flex items-center justify-between transition-all hover:shadow-md">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800 truncate">{formData.documents[fileKey].fileName}</p>
+              <p className="text-xs text-gray-500 flex items-center mt-1">
+                <span className="mr-2">Diunggah oleh: {formData.documents[fileKey].uploadedBy}</span>•
+                <span className="ml-2">{new Date(formData.documents[fileKey].uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <a 
+                href={formData.documents[fileKey].fileUrl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                title="Lihat"
+              >
+                <FiEye size={18} />
+              </a>
+              <label 
+                className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors cursor-pointer"
+                title="Ubah"
+              >
+                <FiEdit size={18} />
+                <input type="file" name={fileKey} onChange={handleFileChange} className="hidden" />
+              </label>
+              <button 
+                type="button" 
+                className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                title="Hapus"
+                onClick={() => handleDeleteFile(fileKey)}
+              >
+                <FiTrash2 size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <input 
+              type="file" 
+              name={fileKey} 
+              onChange={handleFileChange} 
+              className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+            />
+            <div className="p-3 border border-dashed border-blue-300 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
+              <FiUpload className="mr-2" />
+              <span>Pilih file untuk diunggah</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading && !mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="p-8 text-center">
+          <div className="inline-block w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-lg text-gray-600">Memuat data order...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!formData && !loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="p-8 bg-white shadow-lg rounded-lg text-center max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Data Tidak Ditemukan</h2>
+          <p className="text-gray-600 mb-4">Order yang Anda cari tidak dapat ditemukan atau telah dihapus.</p>
+          <button 
+            onClick={() => navigate(`/orders/${portofolio}`)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Kembali ke Daftar Order
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg">
-      <h2 className="text-2xl font-semibold text-gray-700 mb-4">Lengkapi Data Order</h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+    <div 
+      className={`max-w-4xl mx-auto my-8 transition-all duration-500 transform ${
+        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      }`}
+    >
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Accent bar */}
+        <div className="h-2 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 animate-gradient-x"></div>
         
-        {/* Pelanggan (Read-Only) */}
-        <label>Pelanggan</label>
-        <input type="text" value={formData.pelanggan} className="w-full p-2 border rounded-lg bg-gray-100" readOnly />
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">Lengkapi Data Order</h2>
+            <div className="text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+              Portofolio: <span className="font-semibold">{portofolio.toUpperCase()}</span>
+            </div>
+          </div>
+          <p className="text-gray-600 mt-1">
+            Form ini disesuaikan dengan hak akses Anda sebagai <span className="font-semibold">{userPeran}</span>
+          </p>
+        </div>
+        
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Pelanggan (Read-Only) */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Pelanggan</label>
+              <input 
+                type="text" 
+                value={formData.pelanggan || ''} 
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
+                readOnly 
+              />
+            </div>
 
-        {/* Hak Akses Admin Portofolio */}
-        {userPeran === "admin portofolio" && (
-          <>
-            <label>Status Order</label>
-            <select name="statusOrder" value={formData.statusOrder} onChange={handleChange} className="w-full p-2 border rounded-lg">
-              {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </>
-        )}
-{/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Tanggal Status Order</label>
-                    <input type="date" name="tanggalStatusOrder" value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""} onChange={handleDateChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+            {/* Status Order - Admin Portofolio */}
+            {userPeran === "admin portofolio" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status Order</label>
+                <select 
+                  name="statusOrder" 
+                  value={formData.statusOrder || ''} 
+                  onChange={handleChange} 
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          </>
-        )}
+            {/* Tanggal Status Order - Admin Portofolio */}
+            {userPeran === "admin portofolio" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <FiCalendar className="mr-2 text-blue-500" /> Tanggal Status Order
+                </label>
+                <input 
+                  type="date" 
+                  name="tanggalStatusOrder" 
+                  value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""} 
+                  onChange={handleDateChange} 
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                />
+              </div>
+            )}
 
-{/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Jenis Pekerjaan</label>
-                    <input type="text" name="jenisPekerjaan" value={formData.jenisPekerjaan || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+            {/* Fields for Admin Portofolio */}
+            {userPeran === "admin portofolio" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Pekerjaan</label>
+                  <input 
+                    type="text" 
+                    name="jenisPekerjaan" 
+                    value={formData.jenisPekerjaan || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-          </>
-        )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Tongkang</label>
+                  <input 
+                    type="text" 
+                    name="namaTongkang" 
+                    value={formData.namaTongkang || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Nama Tongkang</label>
-                    <input type="text" name="namaTongkang" value={formData.namaTongkang || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lokasi Pekerjaan</label>
+                  <input 
+                    type="text" 
+                    name="lokasiPekerjaan" 
+                    value={formData.lokasiPekerjaan || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-          </>
-        )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Tonase</label>
+                  <input 
+                    type="text" 
+                    name="estimasiTonase" 
+                    value={formData.estimasiTonase || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Lokasi Pekerjaan</label>
-                    <input type="text" name="lokasiPekerjaan" value={formData.lokasiPekerjaan || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Proforma</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500">Rp</span>
+                    </div>
+                    <input 
+                      type="text" 
+                      name="nilaiProforma" 
+                      value={formData.nilaiProforma || ""} 
+                      onChange={handleFormattedProforma} 
+                      className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                    />
+                  </div>
+                </div>
 
-          </>
-        )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Si/Spk</label>
+                  <input 
+                    type="text" 
+                    name="noSiSpk" 
+                    value={formData.noSiSpk || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Estimasi Tonase</label>
-                    <input type="text" name="estimasiTonase" value={formData.estimasiTonase || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tonase DS</label>
+                  <input 
+                    type="number" 
+                    name="tonaseDS" 
+                    value={formData.tonaseDS || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
+              </>
+            )}
 
-          </>
-        )}
+            {/* Fields for Customer Service */}
+            {userPeran === "customer service" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Order</label>
+                <input 
+                  type="text" 
+                  name="nomorOrder" 
+                  value={formData.nomorOrder || ""} 
+                  onChange={handleChange} 
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                />
+              </div>
+            )}
 
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Nilai Proforma</label>
-                    <input type="number" name="nilaiProforma" value={formData.nilaiProforma || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+            {/* Fields for Admin Keuangan */}
+            {userPeran === "admin keuangan" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Invoice</label>
+                  <input 
+                    type="text" 
+                    name="nomorInvoice" 
+                    value={formData.nomorInvoice || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-          </>
-        )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Faktur Pajak</label>
+                  <input 
+                    type="text" 
+                    name="fakturPajak" 
+                    value={formData.fakturPajak || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
 
-        {/* Hak Akses cs */}
-{userPeran === "customer service" && (
-          <>
-            <label>Nomor Order</label>
-                    <input type="text" name="nomorOrder" value={formData.nomorOrder || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen Selesai INV</label>
+                  <input 
+                    type="number" 
+                    name="dokumenSelesaiINV" 
+                    value={formData.dokumenSelesaiINV || ""} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
+              </>
+            )}
 
-          </>
-        )}
+            {/* Fields for Distribusi Sertifikat (All users) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Yang  Mendistribusi/Mengirim Sertifikat</label>
+              <input 
+                type="text" 
+                name="distribusiSertifikatPengirim" 
+                value={formData.distribusiSertifikatPengirim || ""} 
+                onChange={handleChange} 
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              />
+            </div>
 
-          {/* Hak Akses keuangan */}
-{userPeran === "admin keuangan" && (
-          <>
-            <label>Nomor Invoice</label>
-                    <input type="text" name="nomorInvoice" value={formData.nomorInvoice || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Yang Menerima Sertifikat </label>
+              <input 
+                type="text" 
+                name="distribusiSertifikatPenerima" 
+                value={formData.distribusiSertifikatPenerima || ""} 
+                onChange={handleChange} 
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              />
+            </div>
+          </div>
 
-          </>
-        )}
+          {/* Date Input Fields */}
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <FiCalendar className="mr-2 text-blue-500" /> Informasi Tanggal
+            </h3>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.keys(dateLabels).map((key) =>
+                  fieldsToShow.includes(key) ? (
+                    <div key={key} className="flex flex-col">
+                      <label className="text-sm font-medium text-gray-700 mb-1">{dateLabels[key]}</label>
+                      <input
+                        type="date"
+                        name={key}
+                        value={formData[key] ? formatDateForInput(formData[key]) : ""}
+                        onChange={handleDateChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  ) : null
+                )}
+              </div>
+            </div>
+          </div>
 
-          {/* Hak Akses keuangan */}
-{userPeran === "admin keuangan" && (
-          <>
-            <label>Faktur Pajak</label>
-                    <input type="text" name="fakturPajak" value={formData.fakturPajak || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+          {/* Keterangan Sertifikat PM06 - Admin Portofolio */}
+          {userPeran === "admin portofolio" && (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Sertifikat PM06</h3>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan Sertifikat PM06</label>
+                  <select 
+                    name="keteranganSertifikatPM06" 
+                    value={formData.keteranganSertifikatPM06 || ''} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    {["Tidak Ada", "Ada"].map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
 
-          </>
-        )}
+                {formData.keteranganSertifikatPM06 === "Ada" && (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Sertifikat PM06</label>
+                      <input 
+                        type="text" 
+                        name="noSertifikatPM06" 
+                        value={formData.noSertifikatPM06 || ""} 
+                        onChange={handleChange} 
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      />
+                    </div>
+                    {renderFileUpload("sertifikatPM06", "Upload Sertifikat PM06")}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
-        {/* Hak Akses keuangan */}
-{userPeran === "admin keuangan" && (
-          <>
-            <label>Dokumen Selesai INV</label>
-                    <input type="number" name="dokumenSelesaiINV" value={formData.dokumenSelesaiINV || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+          {/* Jenis Sertifikat - Admin Portofolio */}
+          {userPeran === "admin portofolio" && (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Sertifikat</h3>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Sertifikat</label>
+                  <select 
+                    name="jenisSertifikat" 
+                    value={formData.jenisSertifikat || 'Tidak Terbit Sertifikat'} 
+                    onChange={handleChange} 
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    {["Tidak Terbit Sertifikat", "LOADING", "LS (PIK)", "SERTIFIKAT", "LAPORAN", "KALIBRASI", "HALAL"].map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
 
-          </>
-        )}
+                {formData.jenisSertifikat != "Tidak Terbit Sertifikat" && (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Sertifikat</label>
+                      <input 
+                        type="text" 
+                        name="noSertifikat" 
+                        value={formData.noSertifikat || ""} 
+                        onChange={handleChange} 
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      />
+                    </div>
+                    {renderFileUpload("sertifikat", "Upload Sertifikat")}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
-        {/* Hak Akses keuangan */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Tonase DS</label>
-                    <input type="number" name="tonaseDS" value={formData.tonaseDS || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+          {/* File Uploads Section */}
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <FiFile className="mr-2 text-blue-500" /> Dokumen Pendukung
+            </h3>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="grid grid-cols-1 gap-4">
+                {/* Si/Spk Document - Admin Portofolio */}
+                {userPeran === "admin portofolio" && (
+                  renderFileUpload("siSpk", "Upload Dokumen Si/Spk")
+                )}
 
-          </>
-        )}
+                {/* Invoice Document - Admin Keuangan */}
+                {userPeran === "admin keuangan" && (
+                  renderFileUpload("invoice", "Upload Dokumen Invoice")
+                )}
 
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Nomor Si/Spk</label>
-                    <input type="text" name="noSiSpk" value={formData.noSiSpk || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
+                {/* Faktur Pajak Document - Admin Keuangan */}
+                {userPeran === "admin keuangan" && (
+                  renderFileUpload("fakturPajak", "Upload Dokumen Faktur Pajak")
+                )}
+              </div>
+            </div>
+          </div>
 
-          </>
-        )}
-
-        {/* Hak Akses Admin Portofolio */}
-{userPeran === "admin portofolio" && (
-          <>
-            <label>Upload Document Si/Spk</label>
-            {formData.documents?.siSpk ? (
-   <div className="p-2 border rounded-lg bg-gray-100 flex items-center justify-between">
-      <div>
-         <p className="text-sm font-semibold">{formData.documents.siSpk.fileName}</p>
-         <p className="text-xs text-gray-500">Diunggah oleh: {formData.documents.siSpk.uploadedBy}</p>
-         <p className="text-xs text-gray-500">
-            {new Date(formData.documents.siSpk.uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}
-         </p>
+          {/* Form Buttons */}
+          <div className="mt-8 flex items-center justify-between">
+            <button 
+              type="button" 
+              onClick={() => navigate(`/orders/${portofolio}/detail/${id}`)}
+              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center"
+            >
+              Batal
+            </button>
+            <button 
+              type="submit" 
+              disabled={saving || loading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all transform hover:scale-[1.02] shadow-lg flex items-center"
+            >
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <FiCheck className="mr-2" />
+                  Simpan Perubahan
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
-      <div className="flex gap-2">
-         <a href={formData.documents.siSpk.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            Lihat
-         </a>
-         <label className="text-yellow-500 cursor-pointer hover:underline">
-            Ubah
-            <input type="file" name="siSpk" onChange={handleFileChange} className="hidden" />
-         </label>
-         <button type="button" className="text-red-500 hover:underline" onClick={() => handleDeleteFile("siSpk")}>
-            Hapus
-         </button>
-      </div>
-   </div>
-) : (
-   <input type="file" name="siSpk" onChange={handleFileChange} className="w-full p-2 border rounded-lg" />
-)}
-
-          </>
-        )}
-
-        {/* Hak Akses Admin keuangan */}
-{userPeran === "admin keuangan" && (
-          <>
-            <label>Upload Document Invoice</label>
-            {formData.documents?.invoice ? (
-   <div className="p-2 border rounded-lg bg-gray-100 flex items-center justify-between">
-      <div>
-         <p className="text-sm font-semibold">{formData.documents.invoice.fileName}</p>
-         <p className="text-xs text-gray-500">Diunggah oleh: {formData.documents.invoice.uploadedBy}</p>
-         <p className="text-xs text-gray-500">
-            {new Date(formData.documents.invoice.uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}
-         </p>
-      </div>
-      <div className="flex gap-2">
-         <a href={formData.documents.invoice.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            Lihat
-         </a>
-         <label className="text-yellow-500 cursor-pointer hover:underline">
-            Ubah
-            <input type="file" name="invoice" onChange={handleFileChange} className="hidden" />
-         </label>
-         <button type="button" className="text-red-500 hover:underline" onClick={() => handleDeleteFile("invoice")}>
-            Hapus
-         </button>
-      </div>
-   </div>
-) : (
-   <input type="file" name="invoice" onChange={handleFileChange} className="w-full p-2 border rounded-lg" />
-)}
-
-          </>
-        )}
-
-        {/* Hak Akses Admin keuangan */}
-{userPeran === "admin keuangan" && (
-          <>
-            <label>Upload Document Faktur Pajak</label>
-            {formData.documents?.fakturPajak ? (
-   <div className="p-2 border rounded-lg bg-gray-100 flex items-center justify-between">
-      <div>
-         <p className="text-sm font-semibold">{formData.documents.fakturPajak.fileName}</p>
-         <p className="text-xs text-gray-500">Diunggah oleh: {formData.documents.invoice.uploadedBy}</p>
-         <p className="text-xs text-gray-500">
-            {new Date(formData.documents.fakturPajak.uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}
-         </p>
-      </div>
-      <div className="flex gap-2">
-         <a href={formData.documents.fakturPajak.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            Lihat
-         </a>
-         <label className="text-yellow-500 cursor-pointer hover:underline">
-            Ubah
-            <input type="file" name="fakturPajak" onChange={handleFileChange} className="hidden" />
-         </label>
-         <button type="button" className="text-red-500 hover:underline" onClick={() => handleDeleteFile("fakturPajak")}>
-            Hapus
-         </button>
-      </div>
-   </div>
-) : (
-   <input type="file" name="fakturPajak" onChange={handleFileChange} className="w-full p-2 border rounded-lg" />
-)}
-
-          </>
-        )}
-
-        {/* Keterangan Sertifikat PM06 */}
-        {userPeran === "admin portofolio" && (
-          <>
-        <label>Keterangan Sertifikat PM06</label>
-        <select name="keteranganSertifikatPM06" value={formData.keteranganSertifikatPM06} onChange={handleChange} className="w-full p-2 border rounded-lg">
-          {["Tidak Ada", "Ada"].map(option => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-
-        {formData.keteranganSertifikatPM06 === "Ada" && (
-          <>
-            <label>Nomor Sertifikat PM06</label>
-            <input type="text" name="noSertifikatPM06" value={formData.noSertifikatPM06 || ""} onChange={handleChange} className="w-full p-2 border rounded-lg" />
-
-            <label>Upload Sertifikat PM06</label>
-            {formData.documents?.sertifikatPM06 ? (
-   <div className="p-2 border rounded-lg bg-gray-100 flex items-center justify-between">
-      <div>
-         <p className="text-sm font-semibold">{formData.documents.sertifikatPM06.fileName}</p>
-         <p className="text-xs text-gray-500">Diunggah oleh: {formData.documents.sertifikatPM06.uploadedBy}</p>
-         <p className="text-xs text-gray-500">
-            {new Date(formData.documents.sertifikatPM06.uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}
-         </p>
-      </div>
-      <div className="flex gap-2">
-         <a href={formData.documents.sertifikatPM06.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            Lihat
-         </a>
-         <label className="text-yellow-500 cursor-pointer hover:underline">
-            Ubah
-            <input type="file" name="sertifikatPM06" onChange={handleFileChange} className="hidden" />
-         </label>
-         <button type="button" className="text-red-500 hover:underline" onClick={() => handleDeleteFile("sertifikatPM06")}>
-            Hapus
-         </button>
-      </div>
-   </div>
-) : (
-   <input type="file" name="sertifikatPM06" onChange={handleFileChange} className="w-full p-2 border rounded-lg" />
-)}
-
-          </>
-        )}
-        </>
-      )}
-
-
-        {/* Jenis Sertifikat */}
-        {userPeran === "admin portofolio" && (
-          <>
-        <label>Jenis Sertifikat</label>
-        <select name="jenisSertifikat" value={formData.jenisSertifikat} onChange={handleChange} className="w-full p-2 border rounded-lg">
-          {["Tidak Terbit Sertifikat", "LOADING", "LS (PIK)", "SERTIFIKAT", "LAPORAN", "KALIBRASI", "HALAL"].map(option => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-
-        {formData.jenisSertifikat !== "Tidak Terbit Sertifikat" && (
-          <>
-            <label>Nomor Sertifikat</label>
-            <input type="text" name="noSertifikat" value={formData.noSertifikat || ""} onChange={handleChange} className="w-full p-2 border rounded-lg" />
-
-            <label>Upload Sertifikat</label>
-            {formData.documents?.sertifikat ? (
-   <div className="p-2 border rounded-lg bg-gray-100 flex items-center justify-between">
-      <div>
-         <p className="text-sm font-semibold">{formData.documents.sertifikat.fileName}</p>
-         <p className="text-xs text-gray-500">Diunggah oleh: {formData.documents.sertifikat.uploadedBy}</p>
-         <p className="text-xs text-gray-500">
-            {new Date(formData.documents.sertifikat.uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}
-         </p>
-      </div>
-      <div className="flex gap-2">
-         <a href={formData.documents.sertifikat.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            Lihat
-         </a>
-         <label className="text-yellow-500 cursor-pointer hover:underline">
-            Ubah
-            <input type="file" name="sertifikat" onChange={handleFileChange} className="hidden" />
-         </label>
-         <button type="button" className="text-red-500 hover:underline" onClick={() => handleDeleteFile("sertifikat")}>
-            Hapus
-         </button>
-      </div>
-   </div>
-) : (
-   <input type="file" name="sertifikat" onChange={handleFileChange} className="w-full p-2 border rounded-lg" />
-)}
-
-          </>
-        )}
-        </>
-        )}
-
-        {/* Input Tanggal */}
-        <div className="grid grid-cols-2 gap-4">
-  {Object.keys(dateLabels).map((key) =>
-    fieldsToShow.includes(key) ? (
-      <div key={key} className="flex flex-col">
-        <label className="font-semibold text-gray-700">{dateLabels[key]}</label>
-        <input
-          type="date"
-          name={key}
-          value={formData[key] ? formatDateForInput(formData[key]) : ""}
-          onChange={handleDateChange}
-          className="w-full p-2 border rounded-lg bg-white text-gray-700"
-        />
-      </div>
-    ) : null
-  )}
-</div>
-
-            <label>Distribusi Sertifikat Pengirim</label>
-                    <input type="text" name="distribusiSertifikatPengirim" value={formData.distribusiSertifikatPengirim || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
-
-            <label>Distribusi Sertifikat Penerima</label>
-                    <input type="text" name="distribusiSertifikatPenerima" value={formData.distribusiSertifikatPenerima || ""} onChange={handleChange} className="w-full p-2 border rounded-lg bg-gray-100"  />
-
-        <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
-          Simpan
-        </button>
-      </form>
     </div>
   );
 };

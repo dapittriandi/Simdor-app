@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../../services/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { uploadToCloudinary } from "../../services/cloudinaryService";
+import { ArrowLeft, Upload, Calendar, User, FileText, Map, Anchor, Database, AlertTriangle, X, AlertCircle } from "lucide-react";
 
 const CreateOrder = () => {
   const { portofolio } = useParams();
@@ -12,6 +13,10 @@ const CreateOrder = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [activeSection, setActiveSection] = useState("main");
   const [formData, setFormData] = useState({
     pelanggan: "",
     statusOrder: "Draft",
@@ -25,16 +30,40 @@ const CreateOrder = () => {
     tonaseDS: "",
   });
 
+  // Tambahkan deklarasi files DI SINI, sebelum useEffect
+  const [files, setFiles] = useState({ siSpk: null });
+  const [filePreview, setFilePreview] = useState(null);
+  
+  // Untuk melacak field yang sudah disentuh/dimodifikasi
+  const [touchedFields, setTouchedFields] = useState({});
+  
+  // Untuk melacak validasi field secara realtime
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Validasi field secara realtime ketika formData berubah
+  useEffect(() => {
+    validateFields();
+  }, [formData, files]);
+
   const formatDateForInput = (timestamp) => {
     if (!timestamp) return ""; // Handle jika data kosong
     return new Date(timestamp.seconds * 1000).toISOString().split("T")[0]; // Format YYYY-MM-DD
   };
   
 
-  const [files, setFiles] = useState({ siSpk: null });
-
   const handleDateChange = (e) => {
     const { name, value } = e.target;
+    
+    // Tandai field sebagai sudah disentuh
+    setTouchedFields({
+      ...touchedFields,
+      [name]: true
+    });
     
     let newValue = null;
     if (value) {
@@ -45,12 +74,16 @@ const CreateOrder = () => {
     }
   
     setFormData({ ...formData, [name]: newValue });
-  
-    console.log("📅 Perubahan tanggal:", name, newValue); // Debugging
   };
   
   const handleChange = (e) => {
     const { name, value, type } = e.target;
+    
+    // Tandai field sebagai sudah disentuh
+    setTouchedFields({
+      ...touchedFields,
+      [name]: true
+    });
   
     let newValue = value;
   
@@ -60,36 +93,93 @@ const CreateOrder = () => {
     }
   
     setFormData({ ...formData, [name]: newValue });
-  
-    console.log("✏️ Perubahan:", name, newValue); // Debug
+    
+    // Jika mengubah noSiSpk, hapus file jika field kosong
+    if (name === "noSiSpk" && !value) {
+      setFiles({ ...files, siSpk: null });
+      setFilePreview(null);
+    }
   };
   
-
   const handleFileChange = (e) => {
-    setFiles({ ...files, siSpk: e.target.files[0] });
+    const file = e.target.files[0];
+    
+    // Tandai field sebagai sudah disentuh
+    setTouchedFields({
+      ...touchedFields,
+      "file.siSpk": true
+    });
+    
+    if (file) {
+      setFiles({ ...files, siSpk: file });
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFilePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Validasi field secara realtime
+  const validateFields = () => {
+    const errors = {};
+    
+    if (!formData.pelanggan) errors.pelanggan = "Nama pelanggan wajib diisi";
+    if (!formData.tanggalStatusOrder) errors.tanggalStatusOrder = "Tanggal status order wajib diisi";
+    if (!formData.tanggalSerahOrderKeCs) errors.tanggalSerahOrderKeCs = "Tanggal serah order ke CS wajib diisi";
+    if (!formData.jenisPekerjaan) errors.jenisPekerjaan = "Jenis pekerjaan wajib diisi";
+    if (!formData.lokasiPekerjaan) errors.lokasiPekerjaan = "Lokasi pekerjaan wajib diisi";
+    
+    // Validasi SI/SPK: jika nomor diisi, file harus diunggah
+    if (formData.noSiSpk && !files.siSpk) {
+      errors.siSpkFile = "File SI/SPK wajib diunggah jika nomor SI/SPK diisi";
+    }
+    
+    setFieldErrors(errors);
+    return errors;
   };
 
   const validateForm = () => {
-    if (!formData.pelanggan || !formData.tanggalStatusOrder || !formData.tanggalSerahOrderKeCs || !formData.jenisPekerjaan || !formData.lokasiPekerjaan) {
-      return "Harap isi semua field yang wajib diisi!";
+    const errors = validateFields();
+    
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      setPopupMessage(firstError);
+      setShowPopup(true);
+      return;
     }
-    if (formData.noSiSpk && !files.siSpk) {
-      return "Harap unggah file SI/SPK jika mengisi nomor SI/SPK!";
-    }
+    
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    
+    // Tandai semua field sebagai sudah disentuh
+    const allFields = {
+      pelanggan: true,
+      statusOrder: true,
+      tanggalStatusOrder: true,
+      tanggalSerahOrderKeCs: true,
+      jenisPekerjaan: true,
+      lokasiPekerjaan: true,
+      noSiSpk: true,
+      "file.siSpk": true,
+      "siSpkFile": true,
+    };
+    setTouchedFields(allFields);
 
     const validationError = validateForm();
     if (validationError) {
-      setError(validationError);
-      setLoading(false);
+      setPopupMessage(validationError);
+      setShowPopup(true);
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     try {
       let uploadedFiles = {};
@@ -119,10 +209,6 @@ const CreateOrder = () => {
         tanggalPekerjaan: null,
         proformaSerahKeOps: null,
         proformaSerahKeDukbis: null,
-        // noSertifikatPM06: "",
-        // keteranganSertifikatPM06: "",
-        // noSertifikat: "",
-        // jenisSertifikat: "",
         nilaiProforma: 0,
         dokumenSelesaiINV: 0,
         nomorInvoice: "",
@@ -141,89 +227,427 @@ const CreateOrder = () => {
       };
 
       await addDoc(collection(db, "orders"), newOrder);
-      navigate(`/orders/${portofolio}`);
+      
+      // Tampilkan popup sukses
+      setPopupMessage("Order berhasil ditambahkan!");
+      setShowPopup(true);
+      
+      // Redirect setelah 1.5 detik
+      setTimeout(() => {
+        navigate(`/orders/${portofolio}`);
+      }, 1500);
     } catch (error) {
-      setError("Gagal menambahkan order. Coba lagi.");
+      setPopupMessage("Gagal menambahkan order. Coba lagi.");
+      setShowPopup(true);
       console.error(error);
     }
 
     setLoading(false);
   };
 
-  return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Tambah Data Order {portofolio}</h2>
-      {error && <p className="text-red-500">{error}</p>}
+  // Helper untuk menampilkan error pada field
+  const getFieldErrorDisplay = (fieldName) => {
+    return touchedFields[fieldName] && fieldErrors[fieldName] ? (
+      <div className="text-red-500 text-xs mt-1 flex items-center">
+        <AlertCircle className="w-3 h-3 mr-1" />
+        {fieldErrors[fieldName]}
+      </div>
+    ) : null;
+  };
 
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 shadow-md rounded-md">
-        {/* Inputan Wajib */}
-        <div>
-          <label className="block font-medium">Nama Pelanggan *</label>
-          <input type="text" name="pelanggan" value={formData.pelanggan} onChange={handleChange} className="w-full p-2 border rounded" required />
-        </div>
+  const getFormSection = () => {
+    switch (activeSection) {
+      case "main":
+        return (
+          <>
+            {/* Informasi Pelanggan */}
+            <div className="mb-6 pb-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                <User className="w-5 h-5 mr-2 text-blue-500" />
+                Informasi Pelanggan
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Pelanggan <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      name="pelanggan" 
+                      value={formData.pelanggan} 
+                      onChange={handleChange} 
+                      className={`w-full px-4 py-3 bg-gray-50 border ${
+                        touchedFields.pelanggan && fieldErrors.pelanggan 
+                          ? "border-red-300 focus:ring-red-500 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                      } rounded-lg focus:ring-2 transition-all focus:outline-none`} 
+                      required 
+                    />
+                  </div>
+                  {getFieldErrorDisplay("pelanggan")}
+                </div>
+              </div>
+            </div>
 
-        <div>
-          <label className="block font-medium">Status Order *</label>
-          <select name="statusOrder" value={formData.statusOrder} onChange={handleChange} className="w-full p-2 border rounded">
-            {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
+            {/* Informasi Status */}
+            <div className="mb-6 pb-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                <Calendar className="w-5 h-5 mr-2 text-blue-500" />
+                Status & Tanggal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status Order <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="statusOrder" 
+                    value={formData.statusOrder} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none appearance-none"
+                  >
+                    {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
 
-        <div>
-          <label className="block font-medium">Tanggal Status Order *</label>
-          <input type="date" name="tanggalStatusOrder" value={formatDateForInput(formData.tanggalStatusOrder)} onChange={handleDateChange} className="w-full p-2 border rounded" required />
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tanggal Status Order <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    name="tanggalStatusOrder" 
+                    value={formatDateForInput(formData.tanggalStatusOrder)} 
+                    onChange={handleDateChange} 
+                    className={`w-full px-4 py-3 bg-gray-50 border ${
+                      touchedFields.tanggalStatusOrder && fieldErrors.tanggalStatusOrder 
+                        ? "border-red-300 focus:ring-red-500 focus:border-red-500" 
+                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                    } rounded-lg focus:ring-2 transition-all focus:outline-none`} 
+                    required 
+                  />
+                  {getFieldErrorDisplay("tanggalStatusOrder")}
+                </div>
 
-        <div>
-          <label className="block font-medium">Tanggal Serah Order ke CS *</label>
-          <input type="date" name="tanggalSerahOrderKeCs" value={formatDateForInput(formData.tanggalSerahOrderKeCs)} onChange={handleDateChange} className="w-full p-2 border rounded" required />
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tanggal Serah Order ke CS <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    name="tanggalSerahOrderKeCs" 
+                    value={formatDateForInput(formData.tanggalSerahOrderKeCs)} 
+                    onChange={handleDateChange} 
+                    className={`w-full px-4 py-3 bg-gray-50 border ${
+                      touchedFields.tanggalSerahOrderKeCs && fieldErrors.tanggalSerahOrderKeCs 
+                        ? "border-red-300 focus:ring-red-500 focus:border-red-500" 
+                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                    } rounded-lg focus:ring-2 transition-all focus:outline-none`} 
+                    required 
+                  />
+                  {getFieldErrorDisplay("tanggalSerahOrderKeCs")}
+                </div>
+              </div>
+            </div>
 
-        <div>
-          <label className="block font-medium">Jenis Pekerjaan *</label>
-          <input type="text" name="jenisPekerjaan" value={formData.jenisPekerjaan} onChange={handleChange} className="w-full p-2 border rounded" required />
-        </div>
+            {/* Informasi Pekerjaan */}
+            <div className="mb-6 pb-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-blue-500" />
+                Detail Pekerjaan
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Jenis Pekerjaan <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="jenisPekerjaan" 
+                    value={formData.jenisPekerjaan} 
+                    onChange={handleChange} 
+                    className={`w-full px-4 py-3 bg-gray-50 border ${
+                      touchedFields.jenisPekerjaan && fieldErrors.jenisPekerjaan 
+                        ? "border-red-300 focus:ring-red-500 focus:border-red-500" 
+                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                    } rounded-lg focus:ring-2 transition-all focus:outline-none`} 
+                    required 
+                  />
+                  {getFieldErrorDisplay("jenisPekerjaan")}
+                </div>
 
-        <div>
-          <label className="block font-medium">Lokasi Pekerjaan *</label>
-          <input type="text" name="lokasiPekerjaan" value={formData.lokasiPekerjaan} onChange={handleChange} className="w-full p-2 border rounded" required />
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Lokasi Pekerjaan <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Map className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input 
+                      type="text" 
+                      name="lokasiPekerjaan" 
+                      value={formData.lokasiPekerjaan} 
+                      onChange={handleChange} 
+                      className={`pl-10 w-full px-4 py-3 bg-gray-50 border ${
+                        touchedFields.lokasiPekerjaan && fieldErrors.lokasiPekerjaan 
+                          ? "border-red-300 focus:ring-red-500 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                      } rounded-lg focus:ring-2 transition-all focus:outline-none`} 
+                      required 
+                    />
+                  </div>
+                  {getFieldErrorDisplay("lokasiPekerjaan")}
+                </div>
 
-        {/* Input Nomor SI/SPK & Upload File */}
-        <div>
-          <label className="block font-medium">No SI/SPK</label>
-          <input type="text" name="noSiSpk" value={formData.noSiSpk} onChange={handleChange} className="w-full p-2 border rounded" />
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">No SI/SPK</label>
+                  <input 
+                    type="text" 
+                    name="noSiSpk" 
+                    value={formData.noSiSpk} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none" 
+                  />
+                </div>
 
-        {formData.noSiSpk && (
-          <div>
-            <label className="block font-medium">Upload Dokumen SI/SPK *</label>
-            <input type="file" onChange={handleFileChange} className="w-full p-2 border rounded" required />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Tongkang</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Anchor className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input 
+                      type="text" 
+                      name="namaTongkang" 
+                      value={formData.namaTongkang} 
+                      onChange={handleChange} 
+                      className="pl-10 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none" 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Upload SI/SPK */}
+            {formData.noSiSpk && (
+              <div className="mb-6 pb-4 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                  <Upload className="w-5 h-5 mr-2 text-blue-500" />
+                  Dokumen SI/SPK <span className="text-red-500">*</span>
+                </h3>
+                <div className="space-y-4">
+                {getFieldErrorDisplay("siSpkFile")}
+    {/* Atau tambahkan pesan error secara langsung */}
+    {touchedFields["siSpkFile"] && fieldErrors.siSpkFile && (
+      <div className="text-red-500 text-xs mt-1 flex items-center">
+        <AlertCircle className="w-3 h-3 mr-1" />
+        {fieldErrors.siSpkFile}
+      </div>
+    )}
+                  <div className={`border-2 ${
+                    touchedFields["file.siSpk"] && fieldErrors.siSpkFile 
+                      ? "border-red-300" 
+                      : "border-dashed border-gray-300"
+                  } rounded-lg p-6 text-center hover:bg-gray-50 transition-colors`}>
+                    <input 
+                      type="file" 
+                      id="file-upload" 
+                      name="siSpkFile"
+                      onChange={handleFileChange} 
+                      className="sr-only" // Screen reader only - lebih baik daripada hidden
+                      style={{
+                        position: 'absolute', // Posisi absolute untuk tetap bisa difokuskan
+                        width: '1px',
+                        height: '1px',
+                        padding: '0',
+                        margin: '-1px',
+                        overflow: 'hidden',
+                        clip: 'rect(0, 0, 0, 0)',
+                        whiteSpace: 'nowrap',
+                        borderWidth: '0'
+                      }}
+                      required={formData.noSiSpk ? true : false}
+                      aria-required={formData.noSiSpk ? "true" : "false"}
+                    />
+                    <label 
+                      htmlFor="file-upload" 
+                      className="cursor-pointer flex flex-col items-center justify-center"
+                    >
+                      {filePreview ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-center">
+                            <FileText className="h-10 w-10 text-blue-500" />
+                          </div>
+                          <span className="text-sm text-gray-600">{files.siSpk?.name}</span>
+                          <div className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg inline-block">
+                            Ubah file
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <Upload className="h-12 w-12 text-blue-400" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
+                            <p className="text-xs text-gray-500 mt-1">PDF, DOCX, atau JPG. Max 10MB</p>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                  {getFieldErrorDisplay("siSpkFile")}
+                </div>
+              </div>
+            )}
+
+            {/* Informasi Tonase */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                <Database className="w-5 h-5 mr-2 text-blue-500" />
+                Informasi Tonase
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimasi Tonase</label>
+                  <input 
+                    type="number" 
+                    name="estimasiTonase" 
+                    value={formData.estimasiTonase} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tonase DS</label>
+                  <input 
+                    type="number" 
+                    name="tonaseDS" 
+                    value={formData.tonaseDS} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none" 
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Komponen Popup Notification
+  const NotificationPopup = () => {
+    return showPopup ? (
+      <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 transition-opacity duration-300">
+        <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-100 opacity-100">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+              <AlertCircle className="w-5 h-5 mr-2 text-blue-500" />
+              Pemberitahuan
+            </h3>
+            <button 
+              onClick={() => setShowPopup(false)} 
+              className="text-gray-400 hover:text-gray-500 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        )}
-        
-         {/* Field Tambahan */}
-         <div>
-          <label className="block font-medium">Nama Tongkang</label>
-          <input type="text" name="namaTongkang" value={formData.namaTongkang} onChange={handleChange} className="w-full p-2 border rounded" />
+          <div className="mb-4">
+            <p className="text-gray-600">{popupMessage}</p>
+          </div>
+          <div className="flex justify-end">
+            <button 
+              onClick={() => setShowPopup(false)} 
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
         </div>
+      </div>
+    ) : null;
+  };
 
-        <div>
-          <label className="block font-medium">Estimasi Tonase</label>
-          <input type="number" name="estimasiTonase" value={formData.estimasiTonase} onChange={handleChange} className="w-full p-2 border rounded" />
-        </div>
-
-        <div>
-          <label className="block font-medium">Tonase DS</label>
-          <input type="number" name="tonaseDS" value={formData.tonaseDS} onChange={handleChange} className="w-full p-2 border rounded" />
-        </div>
-
-        <button type="submit" className="w-full bg-green-500 text-white p-2 rounded mt-4 hover:bg-green-600" disabled={loading}>
-          {loading ? "Menambahkan..." : "Tambah"}
+  return (
+    <div className={`p-6 max-w-4xl mx-auto transition-all duration-500 ${
+      mounted ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+    }`}>
+      {/* Header with Navigation */}
+      <div className="flex items-center mb-6">
+        <button 
+          onClick={() => navigate(`/orders/${portofolio}`)}
+          className="mr-4 p-2 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-blue-600" />
         </button>
-      </form>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Tambah Order {portofolio.toUpperCase()}</h2>
+          <div className="h-1 w-24 mt-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 rounded-full animate-gradient-x"></div>
+        </div>
+      </div>
+
+      {/* Main Card */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+        {/* Blue accent top bar with gradient animation */}
+        <div className="h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 animate-gradient-x"></div>
+        
+        <div className="p-6">
+          {/* Error display with animation */}
+          {error && (
+            <div className="mb-6 px-4 py-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg shadow-sm animate-fade-in">
+              <div className="flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {getFormSection()}
+            
+            {/* Form Actions */}
+            <div className="flex flex-col-reverse sm:flex-row justify-between pt-4 border-t border-gray-100 gap-4">
+              <button 
+                type="button"
+                onClick={() => navigate(`/orders/${portofolio}`)}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Batal
+              </button>
+              
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center disabled:opacity-70"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menambahkan...
+                  </>
+                ) : (
+                  <>
+                    Tambah Order
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      {/* Popup Notification */}
+      <NotificationPopup />
     </div>
   );
 };
