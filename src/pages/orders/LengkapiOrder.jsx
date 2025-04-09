@@ -190,10 +190,11 @@ const LengkapiOrder = () => {
     const input = e.target.value;
     const rawValue = input.replace(/\D/g, ""); // hanya angka
     const formatted = rawValue ? Number(rawValue).toLocaleString("id-ID") : "";
-  
+
     setFormData((prev) => ({
       ...prev,
-      nilaiProforma: formatted
+      nilaiProformaRaw: rawValue,     // <-- untuk submit ke Firebase
+      nilaiProforma: formatted        // <-- untuk ditampilkan di UI
     }));
   };
   
@@ -272,9 +273,9 @@ const validateFormData = () => {
 
     const payload = {
       ...formData,
-      nilaiProforma: formData.nilaiProforma 
-        ? Number(formData.nilaiProforma.replace(/\./g, "")) 
-        : null
+      nilaiProforma: typeof formData.nilaiProforma === "string"
+      ? Number(formData.nilaiProforma.replace(/\./g, ""))
+      : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
     };
 
     setLoading(true);

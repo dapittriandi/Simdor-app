@@ -51,18 +51,19 @@ const DokumenOrder = () => {
     if (userPeran === "admin portofolio") {
       displayedOrders = orders.filter(order => order.portofolio === userPortofolio);
     } else if (userPeran === "admin keuangan") {
-      displayedOrders = orders.map(order => ({
-        pelanggan: order.pelanggan,
-        nomorOrder: order.nomorOrder,
-        fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
-        invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
-      }));
+      // displayedOrders = orders.map(order => ({
+      //   pelanggan: order.pelanggan,
+      //   nomorOrder: order.nomorOrder,
+      //   fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
+      //   invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
+      // }));
+      // Untuk user selain admin portofolio, tampilkan semua data apa adanya
+    displayedOrders = orders;
     }
   
     setFilteredOrders(displayedOrders);
   }, [orders, userPeran, userPortofolio]);
   
-  // ✅ Fungsi pencarian dengan tombol
   const handleSearch = () => {
     if (searchQuery.trim() === "") {
       handleReset();
@@ -72,6 +73,12 @@ const DokumenOrder = () => {
         order.nomorOrder?.toLowerCase().includes(searchQuery.toLowerCase())
       );
   
+      // 🔒 Filter berdasarkan portofolio jika user adalah admin portofolio
+      if (userPeran === "admin portofolio" && userPortofolio) {
+        results = results.filter(order => order.portofolio === userPortofolio);
+      }
+  
+      // 🔒 Jika admin keuangan: mapping ke data tertentu saja
       if (userPeran === "admin keuangan") {
         results = results.map(order => ({
           pelanggan: order.pelanggan,
@@ -83,9 +90,11 @@ const DokumenOrder = () => {
   
       setFilteredOrders(results);
     }
+  
     setIsSearching(true);
     setCurrentPage(1);
-  };  
+  };
+  
 
   const handleReset = () => {
     setSearchQuery("");  // Kosongkan input pencarian
@@ -112,6 +121,21 @@ const DokumenOrder = () => {
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+  // ✅ Siapkan data untuk ditampilkan di tabel
+const dokumenToRender = paginatedOrders.map((order) => {
+  if (userPeran === "admin keuangan") {
+    return {
+      pelanggan: order.pelanggan,
+      nomorOrder: order.nomorOrder,
+      fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
+      invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
+    };
+  }
+
+  // Untuk selain admin keuangan (termasuk admin portofolio), tampilkan full order
+  return order;
+});
+
 
   if (loading) {
     return (
@@ -199,8 +223,8 @@ const DokumenOrder = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.length > 0 ? (
-                  paginatedOrders.map((order, index) => (
+                {dokumenToRender.length > 0 ? (
+                  dokumenToRender.map((order, index) => (
                     <tr key={order.nomorOrder || index} className="hover:bg-blue-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{order.pelanggan || "-"}</div>
