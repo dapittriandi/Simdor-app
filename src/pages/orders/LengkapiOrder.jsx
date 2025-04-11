@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getOrderById, updateOrder } from "../../services/orderServices";
 import { Timestamp } from "firebase/firestore";
-import { uploadToCloudinary } from "../../services/cloudinaryService";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinaryService";
 import { FiDownload, FiFile, FiTrash2, FiEdit, FiEye, FiUpload, FiCalendar, FiCheck } from "react-icons/fi";
 
 const LengkapiOrder = () => {
@@ -22,6 +22,14 @@ const LengkapiOrder = () => {
     nomorInvoice: null,
     fakturPajak: null,
   });
+
+  // Add a new state for file previews
+const [filePreviews, setFilePreviews] = useState({});
+
+// Menandai input yang belum lengkap
+const checkForIncompleteData = (field) => {
+  return !formData[field] || formData[field] === null || formData[field] === "";
+};
 
   // Mapping Custom Label untuk Field Tanggal
   const dateLabels = {
@@ -119,7 +127,56 @@ const LengkapiOrder = () => {
       setLoading(false);
     }
   };  
+ 
+//   const handleDeleteFile = async (fileKey) => {
+//     if (!formData.documents?.[fileKey]) {
+//       alert("File tidak ditemukan!");
+//       return;
+//     }
   
+//     const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus file ${formData.documents[fileKey].fileName}?`);
+//     if (!confirmDelete) return;
+  
+//     setLoading(true);
+  
+//     try {
+//       const url = formData.documents[fileKey].fileUrl;
+// const publicId = url.substring(url.lastIndexOf('/') + 1, url.lastIndexOf('.'));
+  
+//       // Panggil fungsi deleteFromCloudinary untuk menghapus file
+//       const result = await deleteFromCloudinary(publicId);
+  
+//       if (result.result === 'ok') {
+//         const updatedDocuments = { ...formData.documents };
+//         delete updatedDocuments[fileKey];  // Menghapus file dari objek dokumen
+  
+//         const updatedData = {
+//           ...formData,
+//           documents: updatedDocuments,
+//           updatedAt: Timestamp.now(),
+//         };
+  
+//         await updateOrder(id, updatedData);  // Perbarui data di Firestore
+//         setFormData((prevData) => ({ ...prevData, documents: updatedDocuments }));
+//         setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null }));
+//         setFilePreviews((prevPreviews) => {
+//           const updated = { ...prevPreviews };
+//           delete updated[fileKey];
+//           return updated;
+//         });
+  
+//         alert("File berhasil dihapus!");
+//       } else {
+//         alert("Gagal menghapus file.");
+//       }
+//     } catch (error) {
+//       console.error("Gagal menghapus file:", error);
+//       alert("Terjadi kesalahan saat menghapus file.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
   const handleChange = (e) => {
     const { name, value, type } = e.target;
   
@@ -155,36 +212,89 @@ const LengkapiOrder = () => {
     }));
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (!files.length) return;
   
-    setLoading(true);
-    try {
-      const uploadedFileUrl = await uploadToCloudinary(files[0]);
+    // Store the file object
+    setFiles((prevFiles) => ({
+      ...prevFiles,
+      [name]: files[0],
+    }));
   
-      const updatedDocuments = {
-        ...formData.documents,
-        [name]: {
-          fileName: files[0].name,
-          fileUrl: uploadedFileUrl,
-          uploadedBy: userData.email,
-          uploadedAt: Timestamp.now(),
-        },
-      };
-  
-      const updatedData = { ...formData, documents: updatedDocuments };
-      await updateOrder(id, updatedData);
-      
-      setFormData(updatedData);
-      setFiles((prevFiles) => ({ ...prevFiles, [name]: null })); // Reset file input
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Gagal mengunggah file.");
-    } finally {
-      setLoading(false);
-    }
+    // Create a preview
+    setFilePreviews((prevPreviews) => ({
+      ...prevPreviews,
+      [name]: {
+        fileName: files[0].name,
+        fileSize: (files[0].size / 1024).toFixed(2) + " KB",
+        fileType: files[0].type,
+      },
+    }));
   };
+
+  const [uploadingFiles, setUploadingFiles] = useState({});
+
+  // Modified function to handle file upload on submit
+const uploadFile = async (fileKey, file) => {
+  if (!file) return null;
+  
+  // Set uploading state for this file
+  setUploadingFiles(prev => ({
+    ...prev,
+    [fileKey]: true
+  }));
+  
+  try {
+    const uploadedFileUrl = await uploadToCloudinary(file);
+    
+    return {
+      key: fileKey,
+      fileUrl: uploadedFileUrl,
+      fileName: file.name
+    };
+  } catch (error) {
+    console.error(`Error uploading ${fileKey}:`, error);
+    return null;
+  } finally {
+    // Clear uploading state
+    setUploadingFiles(prev => ({
+      ...prev,
+      [fileKey]: false
+    }));
+  }
+};
+
+  // const handleFileChange = async (e) => {
+  //   const { name, files } = e.target;
+  //   if (!files.length) return;
+  
+  //   setLoading(true);
+  //   try {
+  //     const uploadedFileUrl = await uploadToCloudinary(files[0]);
+  
+  //     const updatedDocuments = {
+  //       ...formData.documents,
+  //       [name]: {
+  //         fileName: files[0].name,
+  //         fileUrl: uploadedFileUrl,
+  //         uploadedBy: userData.email,
+  //         uploadedAt: Timestamp.now(),
+  //       },
+  //     };
+  
+  //     const updatedData = { ...formData, documents: updatedDocuments };
+  //     await updateOrder(id, updatedData);
+      
+  //     setFormData(updatedData);
+  //     setFiles((prevFiles) => ({ ...prevFiles, [name]: null })); // Reset file input
+  //   } catch (error) {
+  //     console.error("Error uploading file:", error);
+  //     alert("Gagal mengunggah file.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleFormattedProforma = (e) => {
     const input = e.target.value;
@@ -199,13 +309,12 @@ const LengkapiOrder = () => {
   };
   
 
-  // Tambahkan fungsi validasi sebelum handleSubmit
-const validateFormData = () => {
+ const validateFormData = () => {
   const errors = [];
   
   // Validasi faktur pajak (Admin Keuangan)
   if (userPeran === "admin keuangan") {
-    // Cek faktur pajak dan file faktur harus diisi bersama-sama
+    // Cek faktur pajak dan file faktur harus diisi bersamaan
     const hasFakturPajak = formData.fakturPajak && formData.fakturPajak.trim() !== "";
     const hasFakturPajakFile = formData.documents?.fakturPajak || files.fakturPajak;
     
@@ -213,7 +322,7 @@ const validateFormData = () => {
       errors.push("Faktur Pajak dan File Faktur Pajak harus diisi bersamaan.");
     }
     
-    // Cek nomor invoice dan file invoice harus diisi bersama-sama
+    // Cek nomor invoice dan file invoice harus diisi bersamaan
     const hasNomorInvoice = formData.nomorInvoice && formData.nomorInvoice.trim() !== "";
     const hasInvoiceFile = formData.documents?.invoice || files.nomorInvoice;
     
@@ -256,12 +365,92 @@ const validateFormData = () => {
     }
   }
   
+  // Validasi File Harus Ada
+  const isFileRequired = formData.documents && Object.keys(formData.documents).length === 0;
+  if (isFileRequired) {
+    errors.push("File tidak boleh kosong. Harap unggah file yang diperlukan.");
+  }
+
   return errors;
 };
+
   
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   // Validasi form data terlebih dahulu
+  //   const validationErrors = validateFormData();
+  
+  //   if (validationErrors.length > 0) {
+  //     // Tampilkan pesan error
+  //     alert(`Error:\n${validationErrors.join('\n')}`);
+  //     return; // Hentikan proses submit
+  //   }
+
+  //   const payload = {
+  //     ...formData,
+  //     nilaiProforma: typeof formData.nilaiProforma === "string"
+  //     ? Number(formData.nilaiProforma.replace(/\./g, ""))
+  //     : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
+  //   };
+
+  //   setLoading(true);
+  //   setSaving(true);
+  
+  //   try {
+  //     // Upload semua file secara paralel
+  //     const existingData = await getOrderById(id);
+  //     const uploadedFiles = await Promise.all(
+  //       Object.entries(files).map(async ([key, file]) => {
+  //         if (file) {
+  //           const fileUrl = await uploadToCloudinary(file);
+  //           return { key, fileUrl, fileName: file.name };
+  //         }
+  //         return null;
+  //       })
+  //     );
+  
+  //     // Konversi hasil upload ke dalam objek
+  //     const uploadedDocuments = uploadedFiles.reduce((acc, file) => {
+  //       if (file) {
+  //         acc[file.key] = {
+  //           fileName: file.fileName,
+  //           fileUrl: file.fileUrl,
+  //           uploadedBy: userData.email,
+  //           uploadedAt: Timestamp.now(),
+  //         };
+  //       }
+  //       return acc;
+  //     }, {});
+  
+  //     // Perbarui data di Firestore
+  //     const updatedData = {
+  //       ...existingData,
+  //       ...payload,
+  //       updatedAt: Timestamp.now(),
+  //       documents: {
+  //         ...formData.documents,
+  //         ...uploadedDocuments,
+  //       },
+  //     };
+  
+  //     await updateOrder(id, updatedData);
+  //     alert("Data berhasil diperbarui!");
+  //     navigate(`/orders/${portofolio}/detail/${id}`);
+  //   } catch (error) {
+  //     console.error("Gagal mengunggah file:", error);
+  //     alert("Terjadi kesalahan saat mengunggah file.");
+  //   } finally {
+  //     setLoading(false);
+  //     setSaving(false);
+  //   }
+  // };
+
+  // Tambahkan/modifikasi di useEffect untuk set default jenis sertifikat
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     // Validasi form data terlebih dahulu
     const validationErrors = validateFormData();
   
@@ -270,31 +459,44 @@ const validateFormData = () => {
       alert(`Error:\n${validationErrors.join('\n')}`);
       return; // Hentikan proses submit
     }
-
+  
     const payload = {
       ...formData,
       nilaiProforma: typeof formData.nilaiProforma === "string"
-      ? Number(formData.nilaiProforma.replace(/\./g, ""))
-      : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
+        ? Number(formData.nilaiProforma.replace(/\./g, ""))
+        : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
     };
-
+  
     setLoading(true);
     setSaving(true);
   
     try {
-      // Upload semua file secara paralel
+      // Get existing data first
       const existingData = await getOrderById(id);
-      const uploadedFiles = await Promise.all(
-        Object.entries(files).map(async ([key, file]) => {
-          if (file) {
-            const fileUrl = await uploadToCloudinary(file);
-            return { key, fileUrl, fileName: file.name };
-          }
-          return null;
-        })
-      );
+      
+      // Upload all files in parallel and track which ones are being uploaded
+      const fileKeys = Object.keys(files).filter(key => files[key] !== null);
+      
+      // Set all files as uploading
+      fileKeys.forEach(key => {
+        setUploadingFiles(prev => ({
+          ...prev,
+          [key]: true
+        }));
+      });
+      
+      const uploadPromises = fileKeys.map(key => uploadFile(key, files[key]));
+      const uploadedFiles = await Promise.all(uploadPromises);
+      
+      // Clear uploading status for all files
+      fileKeys.forEach(key => {
+        setUploadingFiles(prev => ({
+          ...prev,
+          [key]: false
+        }));
+      });
   
-      // Konversi hasil upload ke dalam objek
+      // Convert uploaded files to document objects
       const uploadedDocuments = uploadedFiles.reduce((acc, file) => {
         if (file) {
           acc[file.key] = {
@@ -307,7 +509,7 @@ const validateFormData = () => {
         return acc;
       }, {});
   
-      // Perbarui data di Firestore
+      // Update data in Firestore
       const updatedData = {
         ...existingData,
         ...payload,
@@ -319,6 +521,17 @@ const validateFormData = () => {
       };
   
       await updateOrder(id, updatedData);
+      
+      // Clear file states after successful upload
+      setFiles({
+        noSiSpk: null,
+        noSertifikatPM06: null,
+        noSertifikat: null,
+        nomorInvoice: null,
+        fakturPajak: null,
+      });
+      setFilePreviews({});
+      
       alert("Data berhasil diperbarui!");
       navigate(`/orders/${portofolio}/detail/${id}`);
     } catch (error) {
@@ -330,8 +543,7 @@ const validateFormData = () => {
     }
   };
 
-  // Tambahkan/modifikasi di useEffect untuk set default jenis sertifikat
-useEffect(() => {
+  useEffect(() => {
   setMounted(true);
   const fetchOrder = async () => {
     setLoading(true);
@@ -358,65 +570,112 @@ useEffect(() => {
   return () => setMounted(false);
 }, [id]);
   
-  const renderFileUpload = (fileKey, displayName) => {
-    return (
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-          <FiFile className="mr-2 text-blue-500" /> {displayName}
-        </label>
-        {formData.documents?.[fileKey] ? (
-          <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 flex items-center justify-between transition-all hover:shadow-md">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-800 truncate">{formData.documents[fileKey].fileName}</p>
-              <p className="text-xs text-gray-500 flex items-center mt-1">
-                <span className="mr-2">Diunggah oleh: {formData.documents[fileKey].uploadedBy}</span>•
-                <span className="ml-2">{new Date(formData.documents[fileKey].uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}</span>
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <a 
-                href={formData.documents[fileKey].fileUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                title="Lihat"
-              >
-                <FiEye size={18} />
-              </a>
-              <label 
-                className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors cursor-pointer"
-                title="Ubah"
-              >
-                <FiEdit size={18} />
-                <input type="file" name={fileKey} onChange={handleFileChange} className="hidden" />
-              </label>
-              <button 
-                type="button" 
-                className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
-                title="Hapus"
-                onClick={() => handleDeleteFile(fileKey)}
-              >
-                <FiTrash2 size={18} />
-              </button>
-            </div>
+const renderFileUpload = (fileKey, displayName) => {
+  const hasExistingFile = formData.documents?.[fileKey];
+  const hasNewFile = files[fileKey] || filePreviews[fileKey];
+  const isUploading = uploadingFiles[fileKey];
+  
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <FiFile className="mr-2 text-blue-500" /> {displayName}
+      </label>
+      
+      {/* Existing File from Database */}
+      {hasExistingFile && !hasNewFile ? (
+        <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 flex items-center justify-between transition-all hover:shadow-md">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800 truncate">{formData.documents[fileKey].fileName}</p>
+            <p className="text-xs text-gray-500 flex items-center mt-1">
+              <span className="mr-2">Diunggah oleh: {formData.documents[fileKey].uploadedBy}</span>•
+              <span className="ml-2">{new Date(formData.documents[fileKey].uploadedAt.seconds * 1000).toLocaleDateString("id-ID")}</span>
+            </p>
           </div>
-        ) : (
-          <div className="relative">
-            <input 
-              type="file" 
-              name={fileKey} 
-              onChange={handleFileChange} 
-              className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
-            />
-            <div className="p-3 border border-dashed border-blue-300 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-              <FiUpload className="mr-2" />
-              <span>Pilih file untuk diunggah</span>
-            </div>
+          <div className="flex gap-2">
+            <a 
+              href={formData.documents[fileKey].fileUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+              title="Lihat"
+            >
+              <FiEye size={18} />
+            </a>
+            <label 
+              className="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors cursor-pointer"
+              title="Ubah"
+            >
+              <FiEdit size={18} />
+              <input type="file" name={fileKey} onChange={handleFileChange} className="hidden" />
+            </label>
+            <button 
+              type="button" 
+              className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+              title="Hapus"
+              onClick={() => handleDeleteFile(fileKey)}
+            >
+              <FiTrash2 size={18} />
+            </button>
           </div>
-        )}
-      </div>
-    );
-  };
+        </div>
+      ) : hasNewFile ? (
+        /* New file preview (not yet uploaded to Cloudinary) */
+        <div className="p-3 border rounded-lg bg-green-50 border-green-200 flex items-center justify-between transition-all hover:shadow-md">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800 truncate">
+              {filePreviews[fileKey]?.fileName || files[fileKey]?.name || "File baru"}
+            </p>
+            <p className="text-xs text-gray-500 flex items-center mt-1">
+              <span className="mr-2">Ukuran: {filePreviews[fileKey]?.fileSize || (files[fileKey] ? (files[fileKey].size / 1024).toFixed(2) + " KB" : "")}</span>
+              <span className="ml-2 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">Belum disimpan</span>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              type="button" 
+              className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+              title="Batalkan"
+              onClick={() => {
+                setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null }));
+                setFilePreviews((prevPreviews) => {
+                  const updated = { ...prevPreviews };
+                  delete updated[fileKey];
+                  return updated;
+                });
+              }}
+            >
+              <FiTrash2 size={18} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* No file - Upload option */
+        <div className="relative">
+          <input 
+            type="file" 
+            name={fileKey} 
+            onChange={handleFileChange} 
+            className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+            disabled={isUploading}
+          />
+          <div className={`p-3 border border-dashed ${isUploading ? 'border-amber-300 bg-amber-50' : 'border-blue-300 bg-blue-50'} rounded-lg flex items-center justify-center ${isUploading ? 'text-amber-600' : 'text-blue-600'} hover:bg-blue-100 transition-colors`}>
+            {isUploading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                <span>Mengunggah file...</span>
+              </>
+            ) : (
+              <>
+                <FiUpload className="mr-2" />
+                <span>Pilih file untuk diunggah</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
   if (loading && !mounted) {
     return (
@@ -494,7 +753,7 @@ useEffect(() => {
                   onChange={handleChange} 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
-                  {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map(option => (
+                  {["Draft", "Diproses", "Selesai", "Hold", "Closed", "Next Order", "Archecking"].map(option => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
@@ -514,6 +773,9 @@ useEffect(() => {
                   onChange={handleDateChange} 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                 />
+                {checkForIncompleteData('tanggalStatusOrder') && (
+                  <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                )}
               </div>
             )}
 
@@ -529,6 +791,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('jenisPekerjaan') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -540,6 +805,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('namaTongkang') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -551,6 +819,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('lokasiPekerjaan') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -562,6 +833,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('estimasiTonase') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -577,6 +851,9 @@ useEffect(() => {
                       onChange={handleFormattedProforma} 
                       className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                     />
+                    {checkForIncompleteData('nilaiProforma') && (
+                      <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                    )}
                   </div>
                 </div>
 
@@ -589,6 +866,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('noSiSpk') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -600,6 +880,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('tonaseDS') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
               </>
             )}
@@ -615,6 +898,9 @@ useEffect(() => {
                   onChange={handleChange} 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                 />
+                {checkForIncompleteData('nomorOrder') && (
+                  <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                )}
               </div>
             )}
 
@@ -630,6 +916,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('nomorInvoice') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -641,6 +930,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('fakturPajak') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
 
                 <div>
@@ -652,6 +944,9 @@ useEffect(() => {
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                  {checkForIncompleteData('dokumenSelesaiINV') && (
+                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                  )}
                 </div>
               </>
             )}
@@ -666,6 +961,9 @@ useEffect(() => {
                 onChange={handleChange} 
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
               />
+              {checkForIncompleteData('distribusiSertifikatPengirim') && (
+                <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+              )}
             </div>
 
             <div>
@@ -677,6 +975,9 @@ useEffect(() => {
                 onChange={handleChange} 
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
               />
+              {checkForIncompleteData('distribusiSertifikatPenerima') && (
+                <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+              )}
             </div>
           </div>
 
@@ -698,6 +999,9 @@ useEffect(() => {
                         onChange={handleDateChange}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
+                      {checkForIncompleteData(key) && (
+                        <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                      )}
                     </div>
                   ) : null
                 )}
@@ -735,6 +1039,9 @@ useEffect(() => {
                         onChange={handleChange} 
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                       />
+                      {checkForIncompleteData('noSertifikatPM06') && (
+                        <p className="text-red-500 text-sm mt-1">Isi Nomor SertifikatPM06</p>
+                      )}
                     </div>
                     {renderFileUpload("sertifikatPM06", "Upload Sertifikat PM06")}
                   </>
@@ -773,6 +1080,9 @@ useEffect(() => {
                         onChange={handleChange} 
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                       />
+                      {checkForIncompleteData('noSertifikat') && (
+                        <p className="text-red-500 text-sm mt-1">Isi Nomor Sertifikat</p>
+                      )}
                     </div>
                     {renderFileUpload("sertifikat", "Upload Sertifikat")}
                   </>

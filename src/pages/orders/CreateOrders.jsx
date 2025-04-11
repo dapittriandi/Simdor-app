@@ -307,7 +307,7 @@ const CreateOrder = () => {
                     onChange={handleChange} 
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none appearance-none"
                   >
-                    {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map((option) => (
+                    {["Draft", "Diproses", "Selesai", "Hold", "Closed", "Next Order", "Archecking"].map((option) => (
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>

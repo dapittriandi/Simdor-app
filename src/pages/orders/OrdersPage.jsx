@@ -248,9 +248,11 @@ const OrdersPage = () => {
                   className="pl-10 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none appearance-none"
                 >
                   <option value="">Semua Status</option>
+                  <option value="Draft">Draft</option>
                   <option value="Diproses">Diproses</option>
                   <option value="Selesai">Selesai</option>
                   <option value="Closed">Closed</option>
+                  <option value="Hold">Hold</option>
                   <option value="Next Order">Next Order</option>
                   <option value="Archecking">Archecking</option>
                 </select>

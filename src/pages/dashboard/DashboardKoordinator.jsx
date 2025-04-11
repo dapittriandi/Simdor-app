@@ -29,6 +29,32 @@ const DashboardKoordinator = () => {
     orderTrends: [],
     revenueByPortofolio: {},
   });
+
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11 (January = 0, December = 11)
+    const year = now.getFullYear(); // Get full year (e.g., 2025)
+    return { month, year };
+  };
+
+  const getLast12Months = () => {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+  
+    const { month, year } = getCurrentMonthYear();
+  
+    const last12Months = [];
+  
+    for (let i = 0; i < 12; i++) {
+      const currentMonth = (month - i + 12) % 12;
+      const currentYear = currentMonth > month ? year - 1 : year;
+      last12Months.unshift(`${months[currentMonth]} ${currentYear}`);
+    }
+  
+    return last12Months;
+  };
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // State for fetch errors
 
@@ -56,28 +82,33 @@ const DashboardKoordinator = () => {
         Halal: 0, Laboratorium: 0, SERCO: 0, LSI: 0,
       };
 
+      const months = getLast12Months(); // Ambil 12 bulan terakhir
+
       snapshot.forEach((doc) => {
         const data = doc.data();
         totalOrders++;
         totalProforma += Number(data.nilaiProforma) || 0;
-
+  
         // Hitung jumlah order berdasarkan status
         if (data.statusOrder && statusCounts.hasOwnProperty(data.statusOrder)) {
           statusCounts[data.statusOrder] += 1;
         }
-
+  
         // Hitung jumlah order per bulan
         if (data.tanggalOrder?.seconds) {
           const orderDate = new Date(data.tanggalOrder.seconds * 1000);
-          // Format Month-Year (ex: Mar 2025) to match CS dashboard
           const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-          orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
+  
+          // Hanya simpan bulan yang ada dalam 12 bulan terakhir
+          if (months.includes(monthYear)) {
+            orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
+          }
         }
-
+  
         // Format portofolio agar cocok dengan daftar tetap
         if (data.portofolio) {
           const formattedPortofolio = capitalizeFirstLetter(data.portofolio.trim());
-
+  
           if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
             revenueByPortofolio[formattedPortofolio] += Number(data.nilaiProforma) || 0;
           } else {
@@ -86,21 +117,12 @@ const DashboardKoordinator = () => {
         }
       });
 
-      // Sort months chronologically like in CS dashboard
-      const sortedMonths = Object.keys(orderTrends).sort((a, b) => {
-        const [monthA, yearA] = a.split(' ');
-        const [monthB, yearB] = b.split(' ');
-        const monthMap = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, Mei: 5, Jun: 6, Jul: 7, Agu: 8, Sep: 9, Okt: 10, Nov: 11, Des: 12 };
-        
-        if(yearA !== yearB) return yearA - yearB;
-        return monthMap[monthA] - monthMap[monthB];
-      });
+    // Sort months chronologically like in CS dashboard
+    const orderTrendsArray = months.map((month) => ({
+      bulan: month,
+      jumlah: orderTrends[month] || 0, // Defaultkan ke 0 jika tidak ada data untuk bulan tersebut
+    }));
 
-      // Convert to array for chart
-      const orderTrendsArray = sortedMonths.map((key) => ({
-        bulan: key,
-        jumlah: orderTrends[key],
-      }));
 
       setSummary({
         totalOrders,
@@ -289,7 +311,7 @@ const DashboardKoordinator = () => {
               {isLoading ? (
                 <ChartSkeleton />
               ) : summary.orderTrends.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={summary.orderTrends} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}> {/* Match margins */}
                     <defs>
                       <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
@@ -298,7 +320,10 @@ const DashboardKoordinator = () => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="bulan" fontSize={11} />
-                    <YAxis fontSize={11}/>
+                    <YAxis 
+                      fontSize={11}  
+                      domain={['auto', 'auto']} // Biarkan YAxis otomatis menyesuaikan dengan data
+                      tickFormatter={(value) => value.toLocaleString()} />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}
                       labelStyle={{ fontWeight: 'bold', color: '#333' }}

@@ -158,8 +158,12 @@ const ProfilePage = () => {
             <div className="flex items-center p-3 bg-gray-50 rounded-lg transition-all hover:bg-blue-50 shadow-sm">
               <Folder className="w-4 h-4 text-blue-600 mr-3" />
               <div>
-                <p className="text-xs text-gray-500">Portofolio</p>
-                <p className="font-medium text-sm text-gray-800">{userData.bidang}</p>
+              <p className="text-xs text-gray-500">
+                {userData.peran?.toLowerCase() === "admin portofolio" ? "Portofolio" : "Bidang"}
+              </p>
+              <p className="font-medium text-sm text-gray-800">
+                {userData.bidang || "-"}
+              </p>
               </div>
             </div>
             

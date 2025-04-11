@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../../services/firebase";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { exportToExcel } from "../../utils/exportToExcel";
-import { FileText } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 const LaporanOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -14,6 +14,12 @@ const LaporanOrders = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginatedOrders, setPaginatedOrders] = useState([]);
 
   // Get user data from localStorage
   const userData = JSON.parse(localStorage.getItem("user")) || {};
@@ -24,27 +30,29 @@ const LaporanOrders = () => {
     setMounted(true);
     fetchOrders();
 
-    // HAPUS BAGIAN INI: Tidak perlu lagi menambahkan style dinamis
-    // const style = document.createElement('style');
-    // style.textContent = `
-    //   tr:hover td[data-fixed="true"] {
-    //     background-color: rgb(239, 246, 255) !important; /* blue-50 */
-    //   }
-    //   tr td[data-fixed="true"] {
-    //     background-color: white !important;
-    //   }
-    // `;
-    // document.head.appendChild(style);
-
     return () => {
       setMounted(false);
-      // HAPUS BAGIAN INI: Hapus style saat unmount
-      // const existingStyle = document.querySelector('style[data-dynamic-laporan-orders]'); // Beri ID jika perlu
-      // if (existingStyle) {
-      //   document.head.removeChild(existingStyle);
-      // }
     };
   }, []);
+
+  // Update pagination whenever filtered orders change
+  useEffect(() => {
+    setTotalPages(Math.ceil(filteredOrders.length / itemsPerPage));
+    setCurrentPage(1); // Reset to first page when filters change
+    updatePaginatedData(1);
+  }, [filteredOrders, itemsPerPage]);
+
+  // Update paginated data when page changes
+  useEffect(() => {
+    updatePaginatedData(currentPage);
+  }, [currentPage]);
+
+  // Function to update paginated data
+  const updatePaginatedData = (page) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedOrders(filteredOrders.slice(startIndex, endIndex));
+  };
 
   // Format date function
   const formatDate = (timestamp) => {
@@ -99,7 +107,6 @@ const LaporanOrders = () => {
              // Abaikan error parsing
         }
     }
-
 
     console.warn("Unparseable/invalid date timestamp:", timestamp);
     return "-"; // Default fallback
@@ -186,7 +193,6 @@ const LaporanOrders = () => {
     setLoading(false);
   };
 
-
   const handleFilter = () => {
     let filtered = [...orders];
 
@@ -199,7 +205,6 @@ const LaporanOrders = () => {
       const end = new Date(endDate);
        // Setel waktu ke akhir hari untuk inklusif
       end.setHours(23, 59, 59, 999);
-
 
       filtered = filtered.filter(order => {
         // Coba parse tanggal 'createdAt' yang sudah diformat (DD/MM/YYYY)
@@ -267,7 +272,6 @@ const LaporanOrders = () => {
     });
   };
 
-
   const handleExport = () => {
     if (filteredOrders.length === 0) {
       alert("Tidak ada data untuk diekspor.");
@@ -276,6 +280,22 @@ const LaporanOrders = () => {
     const exportData = prepareDataForExport(filteredOrders);
     const fileName = `Laporan_Orders_${new Date().toISOString().split('T')[0]}`;
     exportToExcel(exportData, fileName, allColumns); // Pass columns for header order
+  };
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    setCurrentPage(page);
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPreviousPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
   };
 
   // Define all columns based on the Firebase schema
@@ -319,7 +339,7 @@ const LaporanOrders = () => {
   const portofolioList = ["BATUBARA", "KSP", "PIK", "INDUSTRI", "HMPM", "AEBT", "MINERAL", "HALAL", "LABORATORIUM", "SERCO", "LSI"];
 
   // Status options for filter dropdown
-  const statusOptions = [ "Draft", "Diproses", "Archecking", "Selesai", "Next Order", "Closed"];
+  const statusOptions = [ "Draft", "Diproses", "Archecking", "Hold", "Selesai", "Next Order", "Closed"];
 
   // Get status badge styling
   const getStatusClass = (status) => {
@@ -327,11 +347,13 @@ const LaporanOrders = () => {
       case "Closed":
       case "Selesai":
         return "inline-block px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium";
-      case "InProgress":
+      case "Archecking":
       case "Diproses":
         return "inline-block px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-medium";
-      case "New":
+      case "Draft":
         return "inline-block px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-800 font-medium";
+      case "Next Order":
+        return "inline-block px-3 py-1 text-xs rounded-full bg-yellow-100 text-purple-800 font-medium";
       default:
         return "inline-block px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-800 font-medium";
     }
@@ -347,7 +369,6 @@ const LaporanOrders = () => {
       }
       return acc;
   }, { firstCol: 0 }); // Offset kolom pertama adalah 0
-
 
   return (
     <div className={`p-6 transition-all duration-500 ${
@@ -463,9 +484,29 @@ const LaporanOrders = () => {
             </div>
           ) : (
             <>
-              {/* Order Count */}
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-gray-600">Menampilkan {filteredOrders.length} order</p>
+              {/* Order Count and Items Per Page */}
+              <div className="flex flex-wrap justify-between items-center mb-4">
+                <p className="text-sm text-gray-600">
+                  Menampilkan {paginatedOrders.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} 
+                  &nbsp;- {Math.min(currentPage * itemsPerPage, filteredOrders.length)} dari {filteredOrders.length} order
+                </p>
+                
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="itemsPerPage" className="text-sm text-gray-600">
+                    Tampilkan:
+                  </label>
+                  <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={handleItemsPerPageChange}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
               </div>
 
               {/* Table with fixed columns - PERBAIKAN */}
@@ -499,8 +540,8 @@ const LaporanOrders = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredOrders.length > 0 ? (
-                        filteredOrders.map((order) => (
+                      {paginatedOrders.length > 0 ? (
+                        paginatedOrders.map((order) => (
                           <tr key={order.id} className="group hover:bg-blue-50 transition-colors duration-150">
                             {/* Render Sel Data */}
                             {allColumns.map((col, index) => (
@@ -541,6 +582,105 @@ const LaporanOrders = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Pagination Controls */}
+              {filteredOrders.length > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <span>
+                      Halaman {currentPage} dari {totalPages}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={goToFirstPage}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded-md border ${
+                        currentPage === 1 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      aria-label="Halaman pertama"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded-md border ${
+                        currentPage === 1 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      aria-label="Halaman sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    {/* Page numbers */}
+                    <div className="hidden md:flex space-x-1">
+                      {[...Array(totalPages)].map((_, index) => {
+                        const pageNum = index + 1;
+                        // Show only nearby pages and first/last pages
+                        if (
+                          pageNum === 1 || 
+                          pageNum === totalPages || 
+                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => goToPage(pageNum)}
+                              className={`min-w-[36px] h-9 px-3 rounded-md border ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        } else if (
+                          (pageNum === currentPage - 2 && currentPage > 3) || 
+                          (pageNum === currentPage + 2 && currentPage < totalPages - 2)
+                        ) {
+                          // Ellipsis
+                          return <span key={pageNum} className="flex items-center justify-center">...</span>;
+                        }
+                        return null;
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`p-2 rounded-md border ${
+                        currentPage === totalPages 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      aria-label="Halaman berikutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    
+                    <button
+                      onClick={goToLastPage}
+                      disabled={currentPage === totalPages}
+                      className={`p-2 rounded-md border ${
+                        currentPage === totalPages 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      aria-label="Halaman terakhir"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

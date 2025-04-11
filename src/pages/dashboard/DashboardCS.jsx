@@ -27,6 +27,32 @@ const DashboardCS = () => {
     fetchOrderSummary();
   }, []);
 
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11 (January = 0, December = 11)
+    const year = now.getFullYear(); // Get full year (e.g., 2025)
+    return { month, year };
+  };
+
+  const getLast12Months = () => {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+  
+    const { month, year } = getCurrentMonthYear();
+  
+    // Array untuk menyimpan bulan dalam format "Bulan Tahun" (misalnya "Mar 2025")
+    const last12Months = [];
+  
+    for (let i = 0; i < 12; i++) {
+      const currentMonth = (month - i + 12) % 12;
+      const currentYear = currentMonth > month ? year - 1 : year;
+      last12Months.unshift(`${months[currentMonth]} ${currentYear}`);
+    }
+  
+    return last12Months;
+  };
+  
   const fetchOrderSummary = async () => {
     setIsLoading(true);
     setError(null); // Reset error state
@@ -35,11 +61,14 @@ const DashboardCS = () => {
       const q = query(ordersRef, orderBy("createdAt", "desc")); // Urutkan semua
       const snapshot = await getDocs(q);
 
+
+      
       let totalOrders = snapshot.size;
       let processingOrdersCount = 0;
       let completedOrdersCount = 0;
       let otherStatusOrdersCount = 0;
       let orderTrendsData = {};
+      const months = getLast12Months(); // Ambil 12 bulan terakhir
       let recentOrdersData = [];
 
       const processingStatuses = ["Diproses", "Archecking"]; // Definisikan status 'processing'
@@ -63,14 +92,14 @@ const DashboardCS = () => {
         if (recentOrdersData.length < 10) {
             // Format tanggal dengan lebih aman
             const formatDate = (timestamp) => {
-                if (!timestamp || typeof timestamp.seconds !== 'number') return "-";
-                try {
-                    return new Date(timestamp.seconds * 1000).toLocaleDateString('id-ID', { // Lokal Indonesia
-                        day: '2-digit', month: 'short', year: 'numeric'
-                    });
-                } catch (e) {
-                    return "-";
-                }
+              if (!timestamp || typeof timestamp.seconds !== 'number') return "-";
+              try {
+                return new Date(timestamp.seconds * 1000).toLocaleDateString('id-ID', {
+                  day: '2-digit', month: 'short', year: 'numeric'
+                });
+              } catch (e) {
+                return "-";
+              }
             };
 
           recentOrdersData.push({
@@ -83,11 +112,10 @@ const DashboardCS = () => {
             createdAt: formatDate(data.createdAt), // Format tanggal dibuat
           });
         }
-
         // Hitung jumlah order per bulan (berdasarkan createdAt)
         if (data.createdAt?.seconds) {
           try {
-            const orderDate = new Date(data.createdAt.seconds * 1000);
+            const orderDate = new Date(data.tanggalOrder.seconds * 1000);
             // Format Bulan-Tahun (misal: Mar 2025)
             const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
             orderTrendsData[monthYear] = (orderTrendsData[monthYear] || 0) + 1;
@@ -97,22 +125,10 @@ const DashboardCS = () => {
         }
       });
 
-      // Konversi orderTrends menjadi array yang diurutkan berdasarkan waktu
-      const sortedMonths = Object.keys(orderTrendsData).sort((a, b) => {
-         // Simple sort based on typical date string format - might need refinement for perfect chronological order
-         // A more robust approach involves converting back to Date objects for sorting
-         // Example: new Date(a) - new Date(b) if format was YYYY-MM
-         const [monthA, yearA] = a.split(' ');
-         const [monthB, yearB] = b.split(' ');
-         const monthMap = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, Mei: 5, Jun: 6, Jul: 7, Agu: 8, Sep: 9, Okt: 10, Nov: 11, Des: 12 };
-         if(yearA !== yearB) return yearA - yearB;
-         return monthMap[monthA] - monthMap[monthB];
-
-      });
-
-      const orderTrendsArray = sortedMonths.map((key) => ({
-        bulan: key,
-        jumlah: orderTrendsData[key],
+      // Menyusun array berdasarkan bulan yang telah diurutkan
+      const orderTrendsArray = months.map((month) => ({
+        bulan: month,
+        jumlah: orderTrendsData[month] || 0, // Isi dengan 0 jika tidak ada data untuk bulan tersebut
       }));
 
       setSummary({
@@ -258,7 +274,7 @@ const DashboardCS = () => {
         </div>
 
         {/* Grid untuk Tabel dan Grafik (side-by-side di layar besar) */}
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
             {/* Kolom Daftar Order Terkini (lebih lebar) */}
             <div className="lg:col-span-2 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
@@ -317,7 +333,7 @@ const DashboardCS = () => {
             </div>
 
             {/* Kolom Grafik Tren Order */}
-            <div className="lg:col-span-1 bg-white shadow-md rounded-lg border border-gray-200">
+            <div className="lg:col-span-2 bg-white shadow-md rounded-lg border border-gray-200">
                  <div className="p-5 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                         <ChartBarIcon className="h-6 w-6 text-gray-600"/>
@@ -328,7 +344,7 @@ const DashboardCS = () => {
                     {isLoading ? (
                         <ChartSkeleton />
                     ) : summary.orderTrends.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={400}>
                             <BarChart data={summary.orderTrends} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}> {/* Adjust margin */}
                                 <defs>
                                 <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
@@ -337,7 +353,10 @@ const DashboardCS = () => {
                                 </linearGradient>
                                 </defs>
                                 <XAxis dataKey="bulan" fontSize={11} />
-                                <YAxis fontSize={11}/>
+                                <YAxis 
+                                  fontSize={11}  
+                                  domain={['auto', 'auto']} // Biarkan YAxis otomatis menyesuaikan dengan data
+                                  tickFormatter={(value) => value.toLocaleString()} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}
                                     labelStyle={{ fontWeight: 'bold', color: '#333' }}

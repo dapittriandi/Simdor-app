@@ -55,7 +55,7 @@ export default function Header() {
   }, [isDropdownOpen]);
 
   return (
-    <header className={`bg-white transition-all duration-500 ${
+    <header className={`bg-white z-[9999] relative transition-all duration-500 ${
       mounted ? "translate-y-0 opacity-100" : "-translate-y-10 opacity-0"
     }`}>
       {/* Top accent bar to match with sidebar */}

@@ -34,6 +34,9 @@ const EditOrder = () => {
     return () => setMounted(false);
   }, [id]);
 
+  const [filePreviews, setFilePreviews] = useState({});
+
+
   const formatDateForInput = (timestamp) => {
     if (!timestamp || !timestamp.seconds) return ""; // Jika null/undefined, return string kosong
     const date = timestamp.toDate();
@@ -104,8 +107,21 @@ const EditOrder = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value ?? "" });
+    const { name, value, type } = e.target;
+  
+    let newValue = value.trim() === "" ? null : value;
+    if (type === "number") {
+      newValue = value ? Number(value) : null; // Konversi string ke number, kosong jadi null
+    } else if (type === "checkbox") {
+      newValue = e.target.checked; // Konversi checkbox ke boolean
+    } else if (value.trim() === "") {
+      newValue = null; // Jika kosong, simpan null
+    }
+  
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: newValue,
+    }));
   };
 
   const handleDateConversion = (timestamp) => {
@@ -122,40 +138,83 @@ const EditOrder = () => {
     });
   };
 
-  // Fungsi menangani perubahan file
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (!files.length) return;
-    
-    setFiles((prevFiles) => ({
-      ...prevFiles,
-      [name]: files[0], // Simpan file ke state
-    }));
+  
+    // Menyimpan file sementara di state
+  setFiles((prevFiles) => ({
+    ...prevFiles,
+    [name]: files[0], // Simpan file yang dipilih ke state `files`
+  }));
+  
+    // Simpan file ke `formData.documents`
+  setFormData((prevData) => ({
+    ...prevData,
+    documents: {
+      ...prevData.documents,
+      [name]: {
+        fileName: files[0].name,
+        fileUrl: URL.createObjectURL(files[0]), // URL sementara untuk preview
+      },
+    },
+  }));
   };
 
-  // Fungsi hapus file yang sudah diupload
+  const [uploadingFiles, setUploadingFiles] = useState({});
+
+  // Modified function to handle file upload on submit
+const uploadFile = async (fileKey, file) => {
+  if (!file) return null;
+  
+  // Set uploading state for this file
+  setUploadingFiles(prev => ({
+    ...prev,
+    [fileKey]: true
+  }));
+  
+  try {
+    const uploadedFileUrl = await uploadToCloudinary(file);
+    
+    return {
+      key: fileKey,
+      fileUrl: uploadedFileUrl,
+      fileName: file.name
+    };
+  } catch (error) {
+    console.error(`Error uploading ${fileKey}:`, error);
+    return null;
+  } finally {
+    // Clear uploading state
+    setUploadingFiles(prev => ({
+      ...prev,
+      [fileKey]: false
+    }));
+  }
+};
+
   const handleDeleteFile = async (fileKey) => {
     if (!formData.documents?.[fileKey]) {
       alert("File tidak ditemukan!");
       return;
     }
-
+  
     // Konfirmasi sebelum menghapus
     const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus file ${formData.documents[fileKey].fileName}?`);
     if (!confirmDelete) return;
-
+  
     setLoading(true);
-
+  
     try {
       const updatedDocuments = { ...formData.documents };
       delete updatedDocuments[fileKey]; // Hapus file dari objek dokumen
-
+  
       const updatedData = {
         ...formData,
         documents: updatedDocuments,
         updatedAt: Timestamp.now(),
       };
-
+  
       await updateOrder(id, updatedData);
       setFormData((prevData) => ({ ...prevData, documents: updatedDocuments }));
       setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null })); // Reset state file
@@ -168,6 +227,41 @@ const EditOrder = () => {
     }
   };  
 
+  // // Fungsi hapus file yang sudah diupload
+  // const handleDeleteFile = async (fileKey) => {
+  //   if (!formData.documents?.[fileKey]) {
+  //     alert("File tidak ditemukan!");
+  //     return;
+  //   }
+
+  //   // Konfirmasi sebelum menghapus
+  //   const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus file ${formData.documents[fileKey].fileName}?`);
+  //   if (!confirmDelete) return;
+
+  //   setLoading(true);
+
+  //   try {
+  //     const updatedDocuments = { ...formData.documents };
+  //     delete updatedDocuments[fileKey]; // Hapus file dari objek dokumen
+
+  //     const updatedData = {
+  //       ...formData,
+  //       documents: updatedDocuments,
+  //       updatedAt: Timestamp.now(),
+  //     };
+
+  //     await updateOrder(id, updatedData);
+  //     setFormData((prevData) => ({ ...prevData, documents: updatedDocuments }));
+  //     setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null })); // Reset state file
+  //     alert("File berhasil dihapus!");
+  //   } catch (error) {
+  //     console.error("Gagal menghapus file:", error);
+  //     alert("Terjadi kesalahan saat menghapus file.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };  
+
   const handleFormattedProforma = (e) => {
     const input = e.target.value;
     const rawValue = input.replace(/\D/g, ""); // hanya angka
@@ -179,122 +273,159 @@ const EditOrder = () => {
     }));
   };
 
-  // Tambahkan fungsi validasi sebelum handleSubmit
-const validateFormData = () => {
-  const errors = [];
-  
-  // Validasi faktur pajak (Admin Keuangan)
-  if (userPeran === "admin keuangan") {
-    // Cek faktur pajak dan file faktur harus diisi bersama-sama
-    const hasFakturPajak = formData.fakturPajak && formData.fakturPajak.trim() !== "";
-    const hasFakturPajakFile = formData.documents?.fakturPajak || files.fakturPajak;
+  const validateFormData = () => {
+    const errors = [];
     
-    if ((hasFakturPajak && !hasFakturPajakFile) || (!hasFakturPajak && hasFakturPajakFile)) {
-      errors.push("Faktur Pajak dan File Faktur Pajak harus diisi bersamaan.");
-    }
-    
-    // Cek nomor invoice dan file invoice harus diisi bersama-sama
-    const hasNomorInvoice = formData.nomorInvoice && formData.nomorInvoice.trim() !== "";
-    const hasInvoiceFile = formData.documents?.invoice || files.nomorInvoice;
-    
-    if ((hasNomorInvoice && !hasInvoiceFile) || (!hasNomorInvoice && hasInvoiceFile)) {
-      errors.push("Nomor Invoice dan File Invoice harus diisi bersamaan.");
-    }
-  }
-  
-  // Validasi Si/Spk (Admin Portofolio)
-  if (userPeran === "admin portofolio") {
-    const hasNoSiSpk = formData.noSiSpk && formData.noSiSpk.trim() !== "";
-    const hasSiSpkFile = formData.documents?.siSpk || files.noSiSpk;
-    
-    if ((hasNoSiSpk && !hasSiSpkFile) || (!hasNoSiSpk && hasSiSpkFile)) {
-      errors.push("Nomor Si/Spk dan File Si/Spk harus diisi bersamaan.");
-    }
-    
-    // Validasi sertifikat PM06
-    const isSertifikatPM06Ada = formData.keteranganSertifikatPM06 === "Ada";
-    
-    if (isSertifikatPM06Ada) {
-      const hasNoSertifikatPM06 = formData.noSertifikatPM06 && formData.noSertifikatPM06.trim() !== "";
-      const hasSertifikatPM06File = formData.documents?.sertifikatPM06 || files.sertifikatPM06;
+    // Validasi faktur pajak (Admin Keuangan)
+    if (userPeran === "admin keuangan") {
+      const hasFakturPajak = formData.fakturPajak && formData.fakturPajak.trim() !== "";
+      const hasFakturPajakFile = formData.documents?.fakturPajak || files.fakturPajak;
       
-      if (!hasNoSertifikatPM06 || !hasSertifikatPM06File) {
-        errors.push("Nomor Sertifikat PM06 dan File Sertifikat PM06 wajib diisi jika keterangan 'Ada'.");
+      if ((hasFakturPajak && !hasFakturPajakFile) || (!hasFakturPajak && hasFakturPajakFile)) {
+        errors.push("Faktur Pajak dan File Faktur Pajak harus diisi bersamaan.");
+      }
+      
+      const hasNomorInvoice = formData.nomorInvoice && formData.nomorInvoice.trim() !== "";
+      const hasInvoiceFile = formData.documents?.invoice || files.nomorInvoice;
+      
+      if ((hasNomorInvoice && !hasInvoiceFile) || (!hasNomorInvoice && hasInvoiceFile)) {
+        errors.push("Nomor Invoice dan File Invoice harus diisi bersamaan.");
       }
     }
     
-    // Validasi untuk sertifikat utama
-    const isSertifikatTerbit = formData.jenisSertifikat && formData.jenisSertifikat !== "Tidak Terbit Sertifikat";
-    
-    if (isSertifikatTerbit) {
-      const hasNoSertifikat = formData.noSertifikat && formData.noSertifikat.trim() !== "";
-      const hasSertifikatFile = formData.documents?.sertifikat || files.noSertifikat;
+    // Validasi Si/Spk (Admin Portofolio)
+    if (userPeran === "admin portofolio") {
+      const hasNoSiSpk = formData.noSiSpk && formData.noSiSpk.trim() !== "";
+      const hasSiSpkFile = formData.documents?.siSpk || files.noSiSpk;
       
-      if (!hasNoSertifikat || !hasSertifikatFile) {
-        errors.push("Nomor Sertifikat dan File Sertifikat wajib diisi jika jenis sertifikat bukan 'Tidak Terbit Sertifikat'.");
+      if ((hasNoSiSpk && !hasSiSpkFile) || (!hasNoSiSpk && hasSiSpkFile)) {
+        errors.push("Nomor Si/Spk dan File Si/Spk harus diisi bersamaan.");
+      }
+  
+      // Validasi sertifikat PM06
+      const isSertifikatPM06Ada = formData.keteranganSertifikatPM06 === "Ada";
+      
+      if (isSertifikatPM06Ada) {
+        const hasNoSertifikatPM06 = formData.noSertifikatPM06 && formData.noSertifikatPM06.trim() !== "";
+        const hasSertifikatPM06File = formData.documents?.sertifikatPM06 || files.sertifikatPM06;
+        
+        if (!hasNoSertifikatPM06 || !hasSertifikatPM06File) {
+          errors.push("Nomor Sertifikat PM06 dan File Sertifikat PM06 wajib diisi jika keterangan 'Ada'.");
+        }
+      }
+      
+      // Validasi untuk sertifikat utama
+      const isSertifikatTerbit = formData.jenisSertifikat && formData.jenisSertifikat !== "Tidak Terbit Sertifikat";
+      
+      if (isSertifikatTerbit) {
+        const hasNoSertifikat = formData.noSertifikat && formData.noSertifikat.trim() !== "";
+        const hasSertifikatFile = formData.documents?.sertifikat || files.noSertifikat;
+        
+        if (!hasNoSertifikat || !hasSertifikatFile) {
+          errors.push("Nomor Sertifikat dan File Sertifikat wajib diisi jika jenis sertifikat bukan 'Tidak Terbit Sertifikat'.");
+        }
       }
     }
-  }
   
-  return errors;
-};
+    // Validasi Semua File
+    Object.keys(files).forEach(fileKey => {
+      if (!files[fileKey] && !formData.documents[fileKey]) {
+        errors.push(`File ${fileKey} wajib diunggah.`);
+      }
+    });
+  
+    return errors;
+  };  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const payload = {
-      ...formData,
-      nilaiProforma: formData.nilaiProforma 
-        ? Number(formData.nilaiProforma.replace(/\./g, "")) 
-        : null,
-    };
-
     // Validasi form data terlebih dahulu
     const validationErrors = validateFormData();
-  
+
     if (validationErrors.length > 0) {
       // Tampilkan pesan error
       alert(`Error:\n${validationErrors.join('\n')}`);
       return; // Hentikan proses submit
     }
+  
+    const payload = {
+      ...formData,
+      nilaiProforma: typeof formData.nilaiProforma === "string"
+        ? Number(formData.nilaiProforma.replace(/\./g, ""))
+        : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
+    };
 
     setLoading(true);
     setSaving(true);
 
     try {
-      let uploadedFiles = {};
-      for (const key in files) {
-        if (files[key]) {
-          uploadedFiles[key] = await uploadToCloudinary(files[key]);
+      // Get existing data first
+      const existingData = await getOrderById(id);
+      
+      // Upload all files in parallel and track which ones are being uploaded
+      const fileKeys = Object.keys(files).filter(key => files[key] !== null);
+      
+      // Set all files as uploading
+      fileKeys.forEach(key => {
+        setUploadingFiles(prev => ({
+          ...prev,
+          [key]: true
+        }));
+      });
+      
+      const uploadPromises = fileKeys.map(key => uploadFile(key, files[key]));
+      const uploadedFiles = await Promise.all(uploadPromises);
+      
+      // Clear uploading status for all files
+      fileKeys.forEach(key => {
+        setUploadingFiles(prev => ({
+          ...prev,
+          [key]: false
+        }));
+      });
+  
+      // Convert uploaded files to document objects
+      const uploadedDocuments = uploadedFiles.reduce((acc, file) => {
+        if (file) {
+          acc[file.key] = {
+            fileName: file.fileName,
+            fileUrl: file.fileUrl,
+            uploadedBy: userData.email,
+            uploadedAt: Timestamp.now(),
+          };
         }
-      }
+        return acc;
+      }, {});
 
-      const updatedDocuments = { ...formData.documents };
-      deletedFiles.forEach((key) => delete updatedDocuments[key]);
-
+      // Update data in Firestore
       const updatedData = {
+        ...existingData,
         ...payload,
         updatedAt: Timestamp.now(),
         documents: {
-          ...updatedDocuments,
-          ...Object.keys(uploadedFiles).reduce((acc, key) => ({
-            ...acc,
-            [key]: {
-              fileName: files[key].name,
-              fileUrl: uploadedFiles[key],
-              uploadedBy: userData.email,
-              uploadedAt: Timestamp.now(),
-            },
-          }), {}),
+          ...formData.documents,
+          ...uploadedDocuments,
         },
       };
-
+  
       await updateOrder(id, updatedData);
-      alert("✅ Data berhasil diperbarui!");
+      
+      // Clear file states after successful upload
+      setFiles({
+        noSiSpk: null,
+        noSertifikatPM06: null,
+        noSertifikat: null,
+        nomorInvoice: null,
+        fakturPajak: null,
+      });
+      setFilePreviews({});
+      
+      alert("Data berhasil diperbarui!");
       navigate(`/orders/${portofolio}/detail/${id}`);
     } catch (error) {
-      console.error("Gagal menyimpan perubahan:", error);
-      alert("❌ Terjadi kesalahan saat menyimpan data.");
+      console.error("Gagal mengunggah file:", error);
+      alert("Terjadi kesalahan saat mengunggah file.");
     } finally {
       setLoading(false);
       setSaving(false);
@@ -302,12 +433,18 @@ const validateFormData = () => {
   };
 
   const renderFileUpload = (fileKey, displayName) => {
+    const hasExistingFile = formData.documents?.[fileKey];
+    const hasNewFile = files[fileKey] || filePreviews[fileKey];
+    const isUploading = uploadingFiles[fileKey];
+    
     return (
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
           <FiFile className="mr-2 text-blue-500" /> {displayName}
         </label>
-        {formData.documents?.[fileKey] ? (
+        
+        {/* Existing File from Database */}
+        {hasExistingFile && !hasNewFile ? (
           <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 flex items-center justify-between transition-all hover:shadow-md">
             <div className="flex-1">
               <p className="text-sm font-semibold text-gray-800 truncate">{formData.documents[fileKey].fileName}</p>
@@ -343,17 +480,58 @@ const validateFormData = () => {
               </button>
             </div>
           </div>
+        ) : hasNewFile ? (
+          /* New file preview (not yet uploaded to Cloudinary) */
+          <div className="p-3 border rounded-lg bg-green-50 border-green-200 flex items-center justify-between transition-all hover:shadow-md">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800 truncate">
+                {filePreviews[fileKey]?.fileName || files[fileKey]?.name || "File baru"}
+              </p>
+              <p className="text-xs text-gray-500 flex items-center mt-1">
+                <span className="mr-2">Ukuran: {filePreviews[fileKey]?.fileSize || (files[fileKey] ? (files[fileKey].size / 1024).toFixed(2) + " KB" : "")}</span>
+                <span className="ml-2 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">Belum disimpan</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                type="button" 
+                className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                title="Batalkan"
+                onClick={() => {
+                  setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null }));
+                  setFilePreviews((prevPreviews) => {
+                    const updated = { ...prevPreviews };
+                    delete updated[fileKey];
+                    return updated;
+                  });
+                }}
+              >
+                <FiTrash2 size={18} />
+              </button>
+            </div>
+          </div>
         ) : (
+          /* No file - Upload option */
           <div className="relative">
             <input 
               type="file" 
               name={fileKey} 
               onChange={handleFileChange} 
               className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+              disabled={isUploading}
             />
-            <div className="p-3 border border-dashed border-blue-300 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-              <FiUpload className="mr-2" />
-              <span>Pilih file untuk diunggah</span>
+            <div className={`p-3 border border-dashed ${isUploading ? 'border-amber-300 bg-amber-50' : 'border-blue-300 bg-blue-50'} rounded-lg flex items-center justify-center ${isUploading ? 'text-amber-600' : 'text-blue-600'} hover:bg-blue-100 transition-colors`}>
+              {isUploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <span>Mengunggah file...</span>
+                </>
+              ) : (
+                <>
+                  <FiUpload className="mr-2" />
+                  <span>Pilih file untuk diunggah</span>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -437,7 +615,7 @@ const validateFormData = () => {
                   onChange={handleChange} 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
-                  {["Draft", "Diproses", "Selesai", "Closed", "Next Order", "Archecking"].map(option => (
+                  {["Draft", "Diproses", "Selesai", "Hold", "Closed", "Next Order", "Archecking"].map(option => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
