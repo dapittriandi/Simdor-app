@@ -107,20 +107,19 @@ const getLast12Months = () => {
       // Ambil bulan yang tetap (12 bulan terakhir)
     const months = getLast12Months();
 
-    totalSnapshot.forEach((doc) => {
-      const data = doc.data();
-      revenue += Number(data.nilaiProforma) || 0;
+    // totalSnapshot.forEach((doc) => {
+    //   const data = doc.data();
 
-      if (data.tanggalOrder?.seconds) {
-        const orderDate = new Date(data.tanggalOrder.seconds * 1000);
-        const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+    //   if (data.tanggalOrder?.seconds) {
+    //     const orderDate = new Date(data.tanggalOrder.seconds * 1000);
+    //     const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
 
-        // Update trends jika bulan tersebut ada
-        if (months.includes(monthYear)) {
-          trends[monthYear] = (trends[monthYear] || 0) + 1;
-        }
-      }
-    });
+    //     // Update trends jika bulan tersebut ada
+    //     if (months.includes(monthYear)) {
+    //       trends[monthYear] = (trends[monthYear] || 0) + 1;
+    //     }
+    //   }
+    // });
 
     setTotalRevenue(revenue);
 
@@ -236,7 +235,7 @@ const getLast12Months = () => {
             </div>
 
             {/* Grid for Progress and Chart (similar to CS dashboard layout) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Progress Bar (wider column) */}
               <div className="lg:col-span-1 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
                 <div className="p-5 border-b border-gray-200">
@@ -297,10 +296,7 @@ const getLast12Months = () => {
                           </linearGradient>
                         </defs>
                         <XAxis dataKey="bulan" fontSize={11} />
-                        <YAxis 
-                          fontSize={11}  
-                          domain={['auto', 'auto']} // Biarkan YAxis otomatis menyesuaikan dengan data
-                          tickFormatter={(value) => value.toLocaleString()} />
+                        <YAxis fontSize={11}/>
                         <Tooltip
                           contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}
                           labelStyle={{ fontWeight: 'bold', color: '#333' }}

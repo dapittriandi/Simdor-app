@@ -16,10 +16,10 @@ const LengkapiOrder = () => {
   const userPeran = userData?.peran || "";
 
   const [files, setFiles] = useState({
-    noSiSpk: null,
+    siSpk: null,
     noSertifikatPM06: null,
-    noSertifikat: null,
-    nomorInvoice: null,
+    Sertifikat: null,
+    invoice: null,
     fakturPajak: null,
   });
 
@@ -216,11 +216,11 @@ const checkForIncompleteData = (field) => {
     const { name, files } = e.target;
     if (!files.length) return;
   
-    // Store the file object
-    setFiles((prevFiles) => ({
-      ...prevFiles,
-      [name]: files[0],
-    }));
+    // Update state untuk menyimpan file yang dipilih
+  setFiles((prevFiles) => ({
+    ...prevFiles,
+    [name]: files[0], // Simpan file pertama yang dipilih
+  }));
   
     // Create a preview
     setFilePreviews((prevPreviews) => ({
@@ -324,7 +324,7 @@ const uploadFile = async (fileKey, file) => {
     
     // Cek nomor invoice dan file invoice harus diisi bersamaan
     const hasNomorInvoice = formData.nomorInvoice && formData.nomorInvoice.trim() !== "";
-    const hasInvoiceFile = formData.documents?.invoice || files.nomorInvoice;
+    const hasInvoiceFile = formData.documents?.invoice || files.invoice;
     
     if ((hasNomorInvoice && !hasInvoiceFile) || (!hasNomorInvoice && hasInvoiceFile)) {
       errors.push("Nomor Invoice dan File Invoice harus diisi bersamaan.");
@@ -334,7 +334,7 @@ const uploadFile = async (fileKey, file) => {
   // Validasi Si/Spk (Admin Portofolio)
   if (userPeran === "admin portofolio") {
     const hasNoSiSpk = formData.noSiSpk && formData.noSiSpk.trim() !== "";
-    const hasSiSpkFile = formData.documents?.siSpk || files.noSiSpk;
+    const hasSiSpkFile = formData.documents?.siSpk || files.siSpk;
     
     if ((hasNoSiSpk && !hasSiSpkFile) || (!hasNoSiSpk && hasSiSpkFile)) {
       errors.push("Nomor Si/Spk dan File Si/Spk harus diisi bersamaan.");
@@ -357,7 +357,7 @@ const uploadFile = async (fileKey, file) => {
     
     if (isSertifikatTerbit) {
       const hasNoSertifikat = formData.noSertifikat && formData.noSertifikat.trim() !== "";
-      const hasSertifikatFile = formData.documents?.sertifikat || files.noSertifikat;
+      const hasSertifikatFile = formData.documents?.sertifikat || files.sertifikat;
       
       if (!hasNoSertifikat || !hasSertifikatFile) {
         errors.push("Nomor Sertifikat dan File Sertifikat wajib diisi jika jenis sertifikat bukan 'Tidak Terbit Sertifikat'.");

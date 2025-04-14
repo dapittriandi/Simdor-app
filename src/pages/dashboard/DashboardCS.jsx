@@ -354,9 +354,9 @@ const DashboardCS = () => {
                                 </defs>
                                 <XAxis dataKey="bulan" fontSize={11} />
                                 <YAxis 
-                                  fontSize={11}  
-                                  domain={['auto', 'auto']} // Biarkan YAxis otomatis menyesuaikan dengan data
-                                  tickFormatter={(value) => value.toLocaleString()} />
+                                fontSize={11}  
+                                domain={['auto', 'auto']} // Biarkan YAxis otomatis menyesuaikan dengan data
+                                tickFormatter={(value) => value.toLocaleString()} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}
                                     labelStyle={{ fontWeight: 'bold', color: '#333' }}

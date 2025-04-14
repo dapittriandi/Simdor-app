@@ -78,8 +78,8 @@ const DashboardKoordinator = () => {
 
       const orderTrends = {};
       const revenueByPortofolio = {
-        Batubara: 0, KSP: 0, PIK: 0, Industri: 0, HMPM: 0, AEBT: 0, Mineral: 0,
-        Halal: 0, Laboratorium: 0, SERCO: 0, LSI: 0,
+        Batubara: 0, Ksp: 0, Pik: 0, Industri: 0, Hmpm: 0, Aebt: 0, Mineral: 0,
+        Halal: 0, Laboratorium: 0, Serco: 0, Lsi: 0,
       };
 
       const months = getLast12Months(); // Ambil 12 bulan terakhir
@@ -140,7 +140,7 @@ const DashboardKoordinator = () => {
   };
 
   const statusList = ["Draft", "Diproses", "Selesai", "Closed", "Hold", "Next Order", "Archecking"];
-  const portofolioList = ["Batubara", "KSP", "PIK", "Industri", "HMPM", "AEBT", "Mineral", "Halal", "Laboratorium", "SERCO", "LSI"];
+  const portofolioList = ["Batubara", "Ksp", "Pik", "Industri", "Hmpm", "Aebt", "Mineral", "Halal", "Laboratorium", "Serco", "Lsi"];
 
   // Skeletons copied from CS dashboard for consistent loading states
   const SummaryCardSkeleton = () => (
@@ -257,7 +257,7 @@ const DashboardKoordinator = () => {
         {/* Grid for Portfolio Revenue and Chart (similar to CS dashboard layout) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Portfolio Revenue (wider column) */}
-          <div className="lg:col-span-2 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
+          <div className="lg:col-span-3 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <BuildingLibraryIcon className="h-6 w-6 text-gray-600"/>
@@ -300,7 +300,7 @@ const DashboardKoordinator = () => {
           </div>
 
           {/* Monthly Trend Chart (narrower column) */}
-          <div className="lg:col-span-1 bg-white shadow-md rounded-lg border border-gray-200">
+          <div className="lg:col-span-3 bg-white shadow-md rounded-lg border border-gray-200">
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <ChartBarIcon className="h-6 w-6 text-gray-600"/>

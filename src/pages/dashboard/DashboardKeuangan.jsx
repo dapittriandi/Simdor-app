@@ -61,82 +61,91 @@ const DashboardKeuangan = () => {
     fetchOrderSummary();
   }, []);
 
+ // Fungsi untuk memformat portofolio menjadi huruf kapital
+  const formatPortofolio = (portofolio) => {
+    if (!portofolio) return '';
+    return portofolio.trim().toUpperCase(); // Mengubah semua huruf menjadi kapital
+  };
+
+  
+
   const fetchOrderSummary = async () => {
     setIsLoading(true);
     setError(null); // Reset error state
     try {
       const ordersRef = collection(db, "orders");
       const snapshot = await getDocs(query(ordersRef));
-
-      let totalOrders = 0;
+  
+      let totalOrders = snapshot.size;
+      let totalProforma = 0;
       let inProcessOrders = 0;
       let completedOrders = 0;
-      let totalProforma = 0;
-
-      const orderTrends = {};
-      const revenueByPortofolio = {
-        Batubara: 0, KSP: 0, PIK: 0, Industri: 0, HMPM: 0, AEBT: 0, Mineral: 0,
-        Halal: 0, Laboratorium: 0, SERCO: 0, LSI: 0,
+      let revenueByPortofolio = {
+        BATUBARA: 0, KSP: 0, PIK: 0, INDUSTRI: 0, HMPM: 0, AEBT: 0, MINERAL: 0,
+        HALAL: 0, LABORATORIUM: 0, SERCO: 0, LSI: 0,
       };
-
-      const months = getLast12Months();
-
+      const orderTrends = {};
+      const months = getLast12Months(); // Ambil 12 bulan terakhir
+  
       snapshot.forEach((doc) => {
         const data = doc.data();
-        totalOrders++;
-        totalProforma += Number(data.nilaiProforma) || 0;
-
+  
+        // Hitung total proforma (nilai dari data.nilaiProforma)
+        totalProforma += isNaN(Number(data.nilaiProforma)) ? 0 : Number(data.nilaiProforma);
+  
         // Hitung jumlah order berdasarkan status
         if (data.statusOrder === "Diproses") inProcessOrders++;
         if (data.statusOrder === "Selesai") completedOrders++;
-
-        // Hitung jumlah order per bulan
-      if (data.tanggalOrder?.seconds) {
-        const orderDate = new Date(data.tanggalOrder.seconds * 1000);
-        const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-
-        // Hanya simpan bulan yang ada dalam 12 bulan terakhir
-        if (months.includes(monthYear)) {
-          orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
-        }
-      }
-
-
-      // Format portofolio agar cocok dengan daftar tetap
-      if (data.portofolio) {
-        const formattedPortofolio = capitalizeFirstLetter(data.portofolio.trim());
-        if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
-          revenueByPortofolio[formattedPortofolio] += Number(data.nilaiProforma) || 0;
-        } else {
-            console.warn(`⚠️ Portofolio tidak dikenal: ${formattedPortofolio}`);
+  
+        // Hitung jumlah order per bulan berdasarkan tanggalOrder
+        if (data.tanggalOrder?.seconds) {
+          const orderDate = new Date(data.tanggalOrder.seconds * 1000);
+          const monthYear = orderDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+  
+          // Menghitung trend berdasarkan bulan
+          if (months.includes(monthYear)) {
+            orderTrends[monthYear] = (orderTrends[monthYear] || 0) + 1;
           }
         }
+        
+        
+        if (data.portofolio) {
+          const formattedPortofolio = formatPortofolio(data.portofolio); // Format portofolio menjadi huruf kapital
+          // console.log("Formatted Portofolio:", formattedPortofolio); // Debug log untuk memastikan portofolio diformat dengan benar
+          if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
+            revenueByPortofolio[formattedPortofolio] += isNaN(Number(data.nilaiProforma)) ? 0 : Number(data.nilaiProforma);
+          } else {
+            // Menangani portofolio yang tidak dikenal
+            console.warn(`⚠️ Portofolio tidak dikenal: ${formattedPortofolio}`);
+          }
+          }
       });
-
-      // Sort months chronologically like in CS dashboard
-    const orderTrendsArray = months.map((month) => ({
-      bulan: month,
-      jumlah: orderTrends[month] || 0, // Set default 0 jika tidak ada data untuk bulan tersebut
-    }));
-      
-
+  
+      // Mengonversi orderTrends ke array yang siap untuk chart
+      const orderTrendsArray = months.map((month) => ({
+        bulan: month,
+        jumlah: orderTrends[month] || 0, // Isi dengan 0 jika bulan tidak ada order
+      }));
+  
       setSummary({
         totalOrders,
+        totalProforma,
         inProcessOrders,
         completedOrders,
-        totalProforma,
         revenueByPortofolio,
         orderTrends: orderTrendsArray,
       });
+  
     } catch (err) {
-      console.error("Gagal mengambil ringkasan order:", err);
-      setError("Tidak dapat memuat data ringkasan. Silakan coba lagi nanti."); // Set error message
+      console.error("Error fetching order summary:", err);
+      setError("Tidak dapat memuat data ringkasan. Silakan coba lagi nanti.");
     } finally {
       setIsLoading(false);
     }
   };
+  
 
-  const portofolioList = ["Batubara", "KSP", "PIK", "Industri", "HMPM", "AEBT", "Mineral", "Halal", "Laboratorium", "SERCO", "LSI"];
+  const portofolioList = ["BATUBARA", "KSP", "PIK", "INDUSTRI", "HMPM", "AEBT", "MINERAL", "HALAL", "LABORATORIUM", "SERCO", "LSI"];
   
   // Calculate total portfolio value
   const totalPortfolioValue = Object.values(summary.revenueByPortofolio).reduce((sum, value) => sum + value, 0);
