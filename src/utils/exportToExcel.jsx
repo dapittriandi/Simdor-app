@@ -57,7 +57,7 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
     "Jenis Pekerjaan", // L
     "Nama Tongkang/Vessel", // M
     "Lokasi Pekerjaan", // N
-    "Estimasi Tonase", // O
+    "Estimasi Kuantitas", // O
     "Tonase DS", // P
     "Tanggal Pengiriman Invoice", // Q
     "Tanggal Pengiriman Faktur Pajak", // R

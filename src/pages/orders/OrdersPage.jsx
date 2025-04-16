@@ -131,24 +131,106 @@ const OrdersPage = () => {
     setOrders(allOrders);
   };
 
-  // Fungsi untuk mengecek kelengkapan data
-  const checkKelengkapan = (order) => {
-    const requiredFields = [
-      "pelanggan",
-      "statusOrder",
-      "nomorOrder",
-      "tanggalOrder",
-      "lokasiPekerjaan",
-      "tonaseDS",
-      "nilaiProforma",
-      "nomorInvoice",
-    ];
-    const isComplete = requiredFields.every((field) => order[field]);
-    return { 
-      isComplete, 
-      text: isComplete ? "Lengkap" : "Tidak Lengkap" 
+  // // Fungsi untuk mengecek kelengkapan data
+  // const checkKelengkapan = (order) => {
+  //   const requiredFields = [
+  //     "pelanggan",
+  //     "statusOrder",
+  //     "nomorOrder",
+  //     "tanggalOrder",
+  //     "lokasiPekerjaan",
+  //     "tonaseDS",
+  //     "nilaiProforma",
+  //     "nomorInvoice",
+  //   ];
+
+  //   const isComplete = requiredFields.every((field) => order[field]);
+  //   return { 
+  //     isComplete, 
+  //     text: isComplete ? "Lengkap" : "Tidak Lengkap" 
+  //   };
+  // };
+
+  const checkKelengkapan = (order, userPeran) => {
+    // Definisikan field yang harus diisi berdasarkan peran
+    const requiredFields = {
+      "admin portofolio": [
+        "pelanggan",
+        "statusOrder",
+        "tanggalStatusOrder",
+        "tanggalSerahOrderKeCs",
+        "tanggalPekerjaan",
+        "proformaSerahKeOps",
+        "proformaSerahKeDukbis",
+        "jenisSertifikat",
+        "keteranganSertifikatPM06",
+        "noSiSpk",
+        "jenisPekerjaan",
+        "namaTongkang",
+        "lokasiPekerjaan",
+        "estimasiTonase",
+        "tonaseDS",
+        "nilaiProforma",
+        "distribusiSertifikatPengirim",
+        "distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima",
+        "distribusiSertifikatPenerimaTanggal",
+      ],
+      "customer service": ["nomorOrder", "tanggalOrder"],
+      "admin keuangan": [
+        "tanggalPengirimanInvoice",
+        "tanggalPengirimanFaktur",
+        "nomorInvoice",
+        "fakturPajak",
+        "dokumenSelesaiINV",
+        "distribusiSertifikatPengirim",
+        "distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima",
+        "distribusiSertifikatPenerimaTanggal",
+      ],
+      "koordinator": [
+        "pelanggan",
+        "statusOrder",
+        "tanggalStatusOrder",
+        "tanggalSerahOrderKeCs",
+        "tanggalPekerjaan",
+        "proformaSerahKeOps",
+        "proformaSerahKeDukbis",
+        "jenisSertifikat",
+        "keteranganSertifikatPM06",
+        "noSiSpk",
+        "jenisPekerjaan",
+        "namaTongkang",
+        "lokasiPekerjaan",
+        "estimasiTonase",
+        "tonaseDS",
+        "nilaiProforma",
+        "tanggalPengirimanInvoice",
+        "tanggalPengirimanFaktur",
+        "nomorInvoice",
+        "fakturPajak",
+        "dokumenSelesaiINV",
+        "nomorOrder", 
+        "tanggalOrder",
+        "distribusiSertifikatPengirim",
+        "distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima",
+        "distribusiSertifikatPenerimaTanggal",
+      ],
+    };
+  
+    // Ambil fields yang harus diisi untuk peran yang sedang aktif
+    const fieldsToCheck = requiredFields[userPeran] || [];
+  
+    // Cek apakah semua field yang diperlukan sudah terisi
+    const isComplete = fieldsToCheck.every((field) => order[field]);
+  
+    return {
+      isComplete,
+      text: isComplete ? "Lengkap" : "Tidak Lengkap",
     };
   };
+  
 
   // Get status badge styling
   const getStatusClass = (status) => {
@@ -324,7 +406,7 @@ const OrdersPage = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {orders.map((order, index) => {
-                      const kelengkapan = checkKelengkapan(order);
+                      const kelengkapan = checkKelengkapan(order, userPeran);
                       return (
                         <tr key={order.id} className="hover:bg-slate-50 transition-colors duration-150">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

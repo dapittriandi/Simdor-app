@@ -19,8 +19,8 @@ const CreateOrder = () => {
   const [activeSection, setActiveSection] = useState("main");
   const [formData, setFormData] = useState({
     pelanggan: "",
-    statusOrder: "Draft",
-    tanggalStatusOrder: null,
+    // statusOrder: "Draft",
+    // tanggalStatusOrder: null,
     tanggalSerahOrderKeCs: null,
     jenisPekerjaan: "",
     lokasiPekerjaan: "",
@@ -29,6 +29,7 @@ const CreateOrder = () => {
     estimasiTonase: "",
     tonaseDS: "",
   });
+  
 
   // Tambahkan deklarasi files DI SINI, sebelum useEffect
   const [files, setFiles] = useState({ siSpk: null });
@@ -127,7 +128,7 @@ const CreateOrder = () => {
     const errors = {};
     
     if (!formData.pelanggan) errors.pelanggan = "Nama pelanggan wajib diisi";
-    if (!formData.tanggalStatusOrder) errors.tanggalStatusOrder = "Tanggal status order wajib diisi";
+    // if (!formData.tanggalStatusOrder) errors.tanggalStatusOrder = "Tanggal status order wajib diisi";
     if (!formData.tanggalSerahOrderKeCs) errors.tanggalSerahOrderKeCs = "Tanggal serah order ke CS wajib diisi";
     if (!formData.jenisPekerjaan) errors.jenisPekerjaan = "Jenis pekerjaan wajib diisi";
     if (!formData.lokasiPekerjaan) errors.lokasiPekerjaan = "Lokasi pekerjaan wajib diisi";
@@ -190,7 +191,7 @@ const CreateOrder = () => {
       const newOrder = {
         portofolio,
         pelanggan: formData.pelanggan,
-        statusOrder: formData.statusOrder,
+        statusOrder: "New Order",
         tanggalStatusOrder: formData.tanggalStatusOrder ? formData.tanggalStatusOrder : null,
         tanggalSerahOrderKeCs: formData.tanggalSerahOrderKeCs ? formData.tanggalSerahOrderKeCs : null,
         jenisPekerjaan: formData.jenisPekerjaan,
@@ -294,10 +295,10 @@ const CreateOrder = () => {
             <div className="mb-6 pb-4 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-blue-500" />
-                Status & Tanggal
+                Tanggal 
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Status Order <span className="text-red-500">*</span>
                   </label>
@@ -330,7 +331,7 @@ const CreateOrder = () => {
                     required 
                   />
                   {getFieldErrorDisplay("tanggalStatusOrder")}
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -511,7 +512,7 @@ const CreateOrder = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimasi Tonase</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimasi Kuantitas/Tonase</label>
                   <input 
                     type="number" 
                     name="estimasiTonase" 
@@ -521,7 +522,7 @@ const CreateOrder = () => {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tonase DS</label>
                   <input 
                     type="number" 
@@ -530,7 +531,7 @@ const CreateOrder = () => {
                     onChange={handleChange} 
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none" 
                   />
-                </div>
+                </div> */}
               </div>
             </div>
           </>

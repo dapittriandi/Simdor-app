@@ -48,15 +48,15 @@ const EditOrder = () => {
     pelanggan: "Pelanggan",
     statusOrder: "Status Order",
     tanggalStatusOrder: "Tanggal Status Order",
-    tanggalSerahOrderKeCs: "Tanggal Serah Order ke CS",
+    tanggalSerahOrderKeCs: "Tanggal Penyerahan Order ke CS",
     tanggalPekerjaan: "Tanggal Pekerjaan",
-    proformaSerahKeOps: "Proforma Serah ke Ops",
-    proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
+    proformaSerahKeOps: "Proforma Diserahkan ke Ops",
+    proformaSerahKeDukbis: "Proforma Diserahkan ke Dukbis",
     noSiSpk: "No SI/SPK",
     jenisPekerjaan: "Jenis Pekerjaan",
     namaTongkang: "Nama Tongkang",
     lokasiPekerjaan: "Lokasi Pekerjaan",
-    estimasiTonase: "Estimasi Tonase",
+    estimasiTonase: "Estimasi Kuantitas",
     tonaseDS: "Tonase DS",
     nilaiProforma: "Nilai Proforma",
     jenisSertifikat: "Jenis Sertifikat",
@@ -172,6 +172,8 @@ const uploadFile = async (fileKey, file) => {
     ...prev,
     [fileKey]: true
   }));
+
+  
   
   try {
     const uploadedFileUrl = await uploadToCloudinary(file);
@@ -413,10 +415,10 @@ const uploadFile = async (fileKey, file) => {
       
       // Clear file states after successful upload
       setFiles({
-        noSiSpk: null,
-        noSertifikatPM06: null,
-        noSertifikat: null,
-        nomorInvoice: null,
+        siSpk: null,
+        sertifikatPM06: null,
+        sertifikat: null,
+        invoice: null,
         fakturPajak: null,
       });
       setFilePreviews({});
@@ -675,7 +677,7 @@ const uploadFile = async (fileKey, file) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Tonase</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Kuantitas</label>
                   <input 
                     type="text" 
                     name="estimasiTonase" 

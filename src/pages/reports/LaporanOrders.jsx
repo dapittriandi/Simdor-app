@@ -306,7 +306,7 @@ const LaporanOrders = () => {
     { key: "statusOrder", label: "Status Order", fixed: true, width: "120px" }, // Lebar tetap untuk kolom ketiga
     { key: "tanggalStatusOrder", label: "Tanggal Status Order" },
     { key: "nomorOrder", label: "Nomor Order" },
-    { key: "tanggalSerahOrderKeCs", label: "Tanggal Serah Order ke CS" },
+    { key: "tanggalSerahOrderKeCs", label: "Tanggal Penyerahan Order ke CS" },
     { key: "tanggalOrder", label: "Tanggal Order" },
     { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan" },
     { key: "proformaSerahKeOps", label: "Proforma Serah Ke Ops" },
@@ -319,7 +319,7 @@ const LaporanOrders = () => {
     { key: "jenisSerifikat", label: "Jenis Sertifikat" },
     { key: "noSiSpk", label: "No SI/SPK" },
     { key: "namaTongkang", label: "Nama Tongkang" },
-    { key: "estimasiTonase", label: "Estimasi Tonase" },
+    { key: "estimasiTonase", label: "Estimasi Kuantitas/Tonase" },
     { key: "tonaseDS", label: "Tonase DS" },
     { key: "nilaiProforma", label: "Nilai Proforma" },
     { key: "dokumenSelesaiINV", label: "Dokumen Selesai INV" },

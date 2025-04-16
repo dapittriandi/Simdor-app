@@ -23,6 +23,9 @@ const LengkapiOrder = () => {
     fakturPajak: null,
   });
 
+  const [statusOrder, setStatusOrder] = useState(formData.statusOrder || "New Order"); // Set default status order
+
+
   // Add a new state for file previews
 const [filePreviews, setFilePreviews] = useState({});
 
@@ -34,13 +37,13 @@ const checkForIncompleteData = (field) => {
   // Mapping Custom Label untuk Field Tanggal
   const dateLabels = {
     tanggalStatusOrder: "Status Order",
-    tanggalSerahOrderKeCs: "Tanggal Serah Order ke CS",
+    tanggalSerahOrderKeCs: "Tanggal Penyerahan Order ke CS",
     tanggalPekerjaan: "Tanggal Pekerjaan",
     tanggalOrder: "Tanggal Order",
     tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
-    tanggalPengirimanFaktur: "Tanggal Kirim Faktur Pajak",
-    proformaSerahKeOps: "Proforma Serah ke Ops",
-    proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
+    tanggalPengirimanFaktur: "Tanggal Pengiriman Faktur Pajak",
+    proformaSerahKeOps: "Proforma diserahkan ke Operasional",
+    proformaSerahKeDukbis: "Proforma diserahkan ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
     distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
   };
@@ -81,7 +84,7 @@ const checkForIncompleteData = (field) => {
   // Hak akses masing-masing peran
   const editableFields = {
     "admin portofolio": [
-      "statusOrder", "tanggalSerahOrderKeCs", "tanggalPekerjaan",
+     "tanggalSerahOrderKeCs", "tanggalPekerjaan",
       "proformaSerahKeOps", "proformaSerahKeDukbis", "noSiSpk", "jenisPekerjaan",
       "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "tonaseDS", "nilaiProforma",
       "jenisSertifikat",
@@ -128,55 +131,10 @@ const checkForIncompleteData = (field) => {
     }
   };  
  
-//   const handleDeleteFile = async (fileKey) => {
-//     if (!formData.documents?.[fileKey]) {
-//       alert("File tidak ditemukan!");
-//       return;
-//     }
-  
-//     const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus file ${formData.documents[fileKey].fileName}?`);
-//     if (!confirmDelete) return;
-  
-//     setLoading(true);
-  
-//     try {
-//       const url = formData.documents[fileKey].fileUrl;
-// const publicId = url.substring(url.lastIndexOf('/') + 1, url.lastIndexOf('.'));
-  
-//       // Panggil fungsi deleteFromCloudinary untuk menghapus file
-//       const result = await deleteFromCloudinary(publicId);
-  
-//       if (result.result === 'ok') {
-//         const updatedDocuments = { ...formData.documents };
-//         delete updatedDocuments[fileKey];  // Menghapus file dari objek dokumen
-  
-//         const updatedData = {
-//           ...formData,
-//           documents: updatedDocuments,
-//           updatedAt: Timestamp.now(),
-//         };
-  
-//         await updateOrder(id, updatedData);  // Perbarui data di Firestore
-//         setFormData((prevData) => ({ ...prevData, documents: updatedDocuments }));
-//         setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null }));
-//         setFilePreviews((prevPreviews) => {
-//           const updated = { ...prevPreviews };
-//           delete updated[fileKey];
-//           return updated;
-//         });
-  
-//         alert("File berhasil dihapus!");
-//       } else {
-//         alert("Gagal menghapus file.");
-//       }
-//     } catch (error) {
-//       console.error("Gagal menghapus file:", error);
-//       alert("Terjadi kesalahan saat menghapus file.");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
+  const handleStatusChange = (e) => {
+    const { value } = e.target;
+    setStatusOrder(value);  // Update status order saat pengguna memilih
+};
   const handleChange = (e) => {
     const { name, value, type } = e.target;
   
@@ -221,6 +179,20 @@ const checkForIncompleteData = (field) => {
     ...prevFiles,
     [name]: files[0], // Simpan file pertama yang dipilih
   }));
+
+  // Update formData.documents
+  setFormData((prevFormData) => ({
+    ...prevFormData,
+    documents: {
+      ...prevFormData.documents,
+      [name]: {
+        fileName: files[0].name,
+        fileUrl: "", // Dapatkan URL file jika sudah diupload
+        uploadedBy: userData.email,
+        uploadedAt: Timestamp.now(),
+      },
+    },
+  }));
   
     // Create a preview
     setFilePreviews((prevPreviews) => ({
@@ -264,37 +236,6 @@ const uploadFile = async (fileKey, file) => {
     }));
   }
 };
-
-  // const handleFileChange = async (e) => {
-  //   const { name, files } = e.target;
-  //   if (!files.length) return;
-  
-  //   setLoading(true);
-  //   try {
-  //     const uploadedFileUrl = await uploadToCloudinary(files[0]);
-  
-  //     const updatedDocuments = {
-  //       ...formData.documents,
-  //       [name]: {
-  //         fileName: files[0].name,
-  //         fileUrl: uploadedFileUrl,
-  //         uploadedBy: userData.email,
-  //         uploadedAt: Timestamp.now(),
-  //       },
-  //     };
-  
-  //     const updatedData = { ...formData, documents: updatedDocuments };
-  //     await updateOrder(id, updatedData);
-      
-  //     setFormData(updatedData);
-  //     setFiles((prevFiles) => ({ ...prevFiles, [name]: null })); // Reset file input
-  //   } catch (error) {
-  //     console.error("Error uploading file:", error);
-  //     alert("Gagal mengunggah file.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleFormattedProforma = (e) => {
     const input = e.target.value;
@@ -374,80 +315,48 @@ const uploadFile = async (fileKey, file) => {
   return errors;
 };
 
+  const checkRequiredFields = (status) => {
+    const requiredFields = {
+      "": ["pelanggan", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase"],
+      "NewOrder": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder"],
+      "Entry": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS"],
+      "Diproses - Lapangan": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06"],
+      "Diproses - Sertifikat": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak"],
+      "closed invoice": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+      "Selesai":["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+    };
   
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
+    // const missingFields = requiredFields[status]?.filter(field => !formData[field] || formData[field] === "");
+  
+    // return missingFields;
 
-  //   // Validasi form data terlebih dahulu
-  //   const validationErrors = validateFormData();
+    return requiredFields[status]?.filter(field => !formData[field] || formData[field] === "");
+  };
   
-  //   if (validationErrors.length > 0) {
-  //     // Tampilkan pesan error
-  //     alert(`Error:\n${validationErrors.join('\n')}`);
-  //     return; // Hentikan proses submit
-  //   }
-
-  //   const payload = {
-  //     ...formData,
-  //     nilaiProforma: typeof formData.nilaiProforma === "string"
-  //     ? Number(formData.nilaiProforma.replace(/\./g, ""))
-  //     : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
-  //   };
-
-  //   setLoading(true);
-  //   setSaving(true);
-  
-  //   try {
-  //     // Upload semua file secara paralel
-  //     const existingData = await getOrderById(id);
-  //     const uploadedFiles = await Promise.all(
-  //       Object.entries(files).map(async ([key, file]) => {
-  //         if (file) {
-  //           const fileUrl = await uploadToCloudinary(file);
-  //           return { key, fileUrl, fileName: file.name };
-  //         }
-  //         return null;
-  //       })
-  //     );
-  
-  //     // Konversi hasil upload ke dalam objek
-  //     const uploadedDocuments = uploadedFiles.reduce((acc, file) => {
-  //       if (file) {
-  //         acc[file.key] = {
-  //           fileName: file.fileName,
-  //           fileUrl: file.fileUrl,
-  //           uploadedBy: userData.email,
-  //           uploadedAt: Timestamp.now(),
-  //         };
-  //       }
-  //       return acc;
-  //     }, {});
-  
-  //     // Perbarui data di Firestore
-  //     const updatedData = {
-  //       ...existingData,
-  //       ...payload,
-  //       updatedAt: Timestamp.now(),
-  //       documents: {
-  //         ...formData.documents,
-  //         ...uploadedDocuments,
-  //       },
-  //     };
-  
-  //     await updateOrder(id, updatedData);
-  //     alert("Data berhasil diperbarui!");
-  //     navigate(`/orders/${portofolio}/detail/${id}`);
-  //   } catch (error) {
-  //     console.error("Gagal mengunggah file:", error);
-  //     alert("Terjadi kesalahan saat mengunggah file.");
-  //   } finally {
-  //     setLoading(false);
-  //     setSaving(false);
-  //   }
-  // };
 
   // Tambahkan/modifikasi di useEffect untuk set default jenis sertifikat
-
+  const getNextStatus = (currentStatus) => {
+    const statusOrderList = [
+      "New Order",
+      "Entry",
+      "Diproses - Lapangan",
+      "Diproses - Sertifikat",
+      "Closed - tgl",
+      "Closed Invoice",
+      "Selesai"
+    ];
+  
+    const currentIndex = statusOrderList.indexOf(currentStatus);
+  
+    if (currentIndex === -1 || currentIndex === statusOrderList.length - 1) {
+      // Jika sudah mencapai status terakhir atau status invalid, tidak ada perubahan
+      return null;
+    }
+  
+    // Kembalikan status berikutnya
+    return statusOrderList[currentIndex + 1];
+  };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
   
@@ -459,9 +368,25 @@ const uploadFile = async (fileKey, file) => {
       alert(`Error:\n${validationErrors.join('\n')}`);
       return; // Hentikan proses submit
     }
+
+    const missingFields = checkRequiredFields(formData.statusOrder);
+    if (missingFields.length > 0) {
+      alert(`Field berikut harus diisi untuk status '${formData.statusOrder}':\n${missingFields.join(", ")}`);
+      return; // Hentikan proses submit jika data belum lengkap
+  }
+
+  // Tentukan status berikutnya
+  const nextStatus = getNextStatus(formData.statusOrder);
+  if (!nextStatus) {
+      alert("Status sudah berada di tahap terakhir.");
+      return;
+  }
+
   
     const payload = {
       ...formData,
+      statusOrder: nextStatus, // Pastikan statusOrder sudah ada di sini
+      tanggalStatusOrder: Timestamp.now(),  
       nilaiProforma: typeof formData.nilaiProforma === "string"
         ? Number(formData.nilaiProforma.replace(/\./g, ""))
         : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
@@ -473,6 +398,28 @@ const uploadFile = async (fileKey, file) => {
     try {
       // Get existing data first
       const existingData = await getOrderById(id);
+
+    //   // Tentukan status order berdasarkan field yang terisi
+    // let newStatus = formData.statusOrder || "New Order";  // Status yang sudah ada atau status awal
+
+    // // Cek dan set status berikutnya berdasarkan status yang ada
+    // const missingFields = checkRequiredFields(newStatus) || [];
+
+    // if (missingFields.length > 0) {
+    //   alert(`Field berikut harus diisi untuk status '${newStatus}':\n${missingFields.join(", ")}`);
+    //   return;
+    // }
+
+    // // Tentukan status berikutnya jika data sudah lengkap
+    // const nextStatus = getNextStatus(newStatus);
+    // if (nextStatus) {
+    //   newStatus = nextStatus;
+    // }
+
+    // // Update status dan tanggal perubahan
+    // payload.statusOrder = newStatus;
+    // payload.tanggalStatusOrder = Timestamp.now();  // Set tanggal perubahan status
+
       
       // Upload all files in parallel and track which ones are being uploaded
       const fileKeys = Object.keys(files).filter(key => files[key] !== null);
@@ -524,10 +471,10 @@ const uploadFile = async (fileKey, file) => {
       
       // Clear file states after successful upload
       setFiles({
-        noSiSpk: null,
-        noSertifikatPM06: null,
-        noSertifikat: null,
-        nomorInvoice: null,
+        siSpk: null,
+        sertifikatPM06: null,
+        sertifikat: null,
+        invoice: null,
         fakturPajak: null,
       });
       setFilePreviews({});
@@ -558,6 +505,8 @@ const uploadFile = async (fileKey, file) => {
           tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
           tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
           tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
+          statusOrder: data.statusOrder,  // Menampilkan status terbaru
+          // tanggalStatusOrder: data.tanggalStatusOrder,  // Menampilkan tanggal perubahan status
         });
       }
     } catch (error) {
@@ -744,7 +693,7 @@ const renderFileUpload = (fileKey, displayName) => {
             </div>
 
             {/* Status Order - Admin Portofolio */}
-            {userPeran === "admin portofolio" && (
+            {/* {userPeran === "CS" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status Order</label>
                 <select 
@@ -753,12 +702,12 @@ const renderFileUpload = (fileKey, displayName) => {
                   onChange={handleChange} 
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
-                  {["Draft", "Diproses", "Selesai", "Hold", "Closed", "Next Order", "Archecking"].map(option => (
+                  {["Tidak Archecking", "Archecking"].map(option => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
               </div>
-            )}
+            )} */}
 
             {/* Tanggal Status Order - Admin Portofolio */}
             {userPeran === "admin portofolio" && (
@@ -825,7 +774,7 @@ const renderFileUpload = (fileKey, displayName) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Tonase</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Kuantitas</label>
                   <input 
                     type="text" 
                     name="estimasiTonase" 

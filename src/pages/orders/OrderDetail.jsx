@@ -124,19 +124,19 @@ const OrderDetail = () => {
         { key: "nomorOrder", label: "Nomor Order" },
         { key: "tanggalOrder", label: "Tanggal Order", isDate: true },
         // { key: "tanggalStatusOrder", label: "Tanggal Status Order", isDate: true },
-        { key: "tanggalSerahOrderKeCs", label: "Tanggal Serah Order Ke CS", isDate: true },
+        { key: "tanggalSerahOrderKeCs", label: "Tanggal Penyerahan Order Ke CS", isDate: true },
       ]
     },
     {
       title: "Detail Pekerjaan",
       icon: <Clock className="w-5 h-5 text-blue-500" />,
       fields: [
-        { key: "noSiSpk", label: "No SI/SPK" },
+        { key: "noSiSpk", label: "Nomor SI/SPK" },
         { key: "jenisPekerjaan", label: "Jenis Pekerjaan" },
         { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
         { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan", isDate: true },
         { key: "namaTongkang", label: "Nama Tongkang" },
-        { key: "estimasiTonase", label: "Estimasi Tonase" },
+        { key: "estimasiTonase", label: "Estimasi Kuantitas" },
         { key: "tonaseDS", label: "Tonase DS" },
       ]
     },
