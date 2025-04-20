@@ -77,7 +77,7 @@ const getLast12Months = () => {
       const closedQuery = query(
         ordersRef,
         where("portofolio", "==", userBidang),
-        where("statusOrder", "in", ["Closed", "Selesai"])  // Menambahkan "Selesai"
+        where("statusOrder", "in", ["Selesai"])  // Menambahkan "Selesai"
       );
 
       const closedSnapshot = await getDocs(closedQuery);

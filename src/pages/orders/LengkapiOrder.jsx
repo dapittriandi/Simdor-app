@@ -14,17 +14,18 @@ const LengkapiOrder = () => {
   const [mounted, setMounted] = useState(false);
   const userData = JSON.parse(localStorage.getItem("user"));
   const userPeran = userData?.peran || "";
+  const userEmail = userData?.email || "";
 
   const [files, setFiles] = useState({
     siSpk: null,
-    noSertifikatPM06: null,
-    Sertifikat: null,
+    sertifikatPM06: null,
+    sertifikat: null,
     invoice: null,
     fakturPajak: null,
   });
 
-  const [statusOrder, setStatusOrder] = useState(formData.statusOrder || "New Order"); // Set default status order
-
+  // Tambahkan state untuk memantau status order saat ini
+const [currentStatusOrder, setCurrentStatusOrder] = useState(formData.statusOrder || "New Order");
 
   // Add a new state for file previews
 const [filePreviews, setFilePreviews] = useState({});
@@ -45,7 +46,7 @@ const checkForIncompleteData = (field) => {
     proformaSerahKeOps: "Proforma diserahkan ke Operasional",
     proformaSerahKeDukbis: "Proforma diserahkan ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
-    distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
+    distribusiSertifikatPenerimaTanggal: "Tanggal Diterima Sertifikat",
   };
 
   const formatDateForInput = (timestamp) => {
@@ -87,13 +88,38 @@ const checkForIncompleteData = (field) => {
      "tanggalSerahOrderKeCs", "tanggalPekerjaan",
       "proformaSerahKeOps", "proformaSerahKeDukbis", "noSiSpk", "jenisPekerjaan",
       "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "tonaseDS", "nilaiProforma",
-      "jenisSertifikat",
+      "jenisSertifikat", "tanggalStatusOrder",
       ...(portofolio === "batubara" || portofolio === "ksp" ? ["tonaseDS", "keteranganSertifikatPM06", "noSertifikatPM06"] : [])
     ],
     "customer service": ["nomorOrder", "tanggalOrder"],
-    "admin keuangan": ["dokumenSelesaiINV", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak"],
+    "admin keuangan": ["tanggalStatusOrder", "dokumenSelesaiINV", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak", "invoice"],
     "all": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"]
   };
+
+  // Helper function untuk menentukan field apa yang ditampilkan berdasarkan status order
+const getFieldsToShowByStatus = (status) => {
+  switch (status) {
+    case "New Order":
+      return ["nomorOrder", "tanggalOrder"];
+    case "Entry":
+      return ["tanggalPekerjaan", "tonaseDS"];
+    case "Diproses - Lapangan":
+      return ["keteranganSertifikatPM06", "jenisSertifikat", "noSertifikatPM06", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"];
+    case "Diproses - Sertifikat":
+      return ["tanggalStatusOrder"];
+    case "Closed":
+      return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "dokumenSelesaiINV"];
+    case "Closed Invoice":
+      return [
+        "distribusiSertifikatPengirim",
+        "distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima",
+        "distribusiSertifikatPenerimaTanggal"
+      ];
+    default:
+      return [];
+  }
+};
 
   const fieldsToShow = [...editableFields[userPeran] || [], ...editableFields["all"]];
 
@@ -130,11 +156,7 @@ const checkForIncompleteData = (field) => {
       setLoading(false);
     }
   };  
- 
-  const handleStatusChange = (e) => {
-    const { value } = e.target;
-    setStatusOrder(value);  // Update status order saat pengguna memilih
-};
+
   const handleChange = (e) => {
     const { name, value, type } = e.target;
   
@@ -173,11 +195,30 @@ const checkForIncompleteData = (field) => {
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (!files.length) return;
-  
+   // Cek apakah ada file yang dipilih
+
+   const file = e.target.files[0];
+
+    // Cek apakah ada file yang dipilih
+    if (!file) return;
+
+   // Pengecekan Tipe File (hanya menerima PDF dan gambar, misalnya)
+   const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']; // Ekstensi yang diperbolehkan
+   if (!allowedTypes.includes(file.type)) {
+     alert('Tipe file tidak didukung. Harap pilih file PDF atau gambar (JPEG/PNG).');
+     return; // Hentikan jika tipe file tidak sesuai
+   }
+ 
+   // Pengecekan Ukuran File (misalnya, maksimal 5MB)
+   const maxSize = 5 * 1024 * 1024; // 5MB dalam byte
+   if (file.size > maxSize) {
+     alert('Ukuran file terlalu besar. Harap pilih file yang kurang dari 5MB.');
+     return; // Hentikan jika ukuran file melebihi batas
+   }
     // Update state untuk menyimpan file yang dipilih
   setFiles((prevFiles) => ({
     ...prevFiles,
-    [name]: files[0], // Simpan file pertama yang dipilih
+    [name]: file[0], // Simpan file pertama yang dipilih
   }));
 
   // Update formData.documents
@@ -248,7 +289,6 @@ const uploadFile = async (fileKey, file) => {
       nilaiProforma: formatted        // <-- untuk ditampilkan di UI
     }));
   };
-  
 
  const validateFormData = () => {
   const errors = [];
@@ -315,33 +355,82 @@ const uploadFile = async (fileKey, file) => {
   return errors;
 };
 
+  // const checkRequiredFields = (status) => {
+  //   const requiredFields = {
+  //     "": ["pelanggan", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase"],
+  //     "NewOrder": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder"],
+  //     "Entry": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS"],
+  //     "Diproses - Lapangan": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06"],
+  //     "Diproses - Sertifikat": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak"],
+  //     "closed invoice": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+  //     "Selesai":["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+  //   };
+
+  //   return requiredFields[status]?.filter(field => !formData[field] || formData[field] === "");
+  // };
+
   const checkRequiredFields = (status) => {
     const requiredFields = {
       "": ["pelanggan", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase"],
-      "NewOrder": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder"],
-      "Entry": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS"],
-      "Diproses - Lapangan": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06"],
-      "Diproses - Sertifikat": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak"],
-      "closed invoice": ["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
-      "Selesai":["pelanggan", "tanggalStatusOrder", "tanggalSerahOrderKeCs", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "nomorOrder", "tanggalOrder", "tanggalPekerjaan", "tonaseDS", "keteranganSertifikatPM06", "jenisSertifikat", "noSertifikat", "noSertifikatPM06", "nomorInvoice", "fakturPajak", "distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+      "New Order": ["nomorOrder", "tanggalOrder"],
+      "Entry": ["tanggalPekerjaan", "tonaseDS"],
+      "Diproses - Lapangan": [ "jenisSertifikat", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
+      "Diproses - Sertifikat": ["tanggalStatusOrder"],
+      "Closed": ["nomorInvoice", "fakturPajak", "dokumenSelesaiINV"],
+      "Closed Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
     };
   
-    // const missingFields = requiredFields[status]?.filter(field => !formData[field] || formData[field] === "");
-  
-    // return missingFields;
+  // Check if the required fields for "Diproses - Lapangan" are valid
+  const missingFields = [];
 
-    return requiredFields[status]?.filter(field => !formData[field] || formData[field] === "");
+  // Get the fields required for the current status
+  const fieldsForCurrentStatus = requiredFields[status] || [];
+
+  // Validasi untuk status Diproses - Lapangan (Memastikan salah satu sertifikat diisi)
+  // Cek untuk Diproses - Lapangan: minimal salah satu sertifikat harus diisi
+  if (status === "Diproses - Lapangan") {
+    if (formData.jenisSertifikat === "-") {
+      missingFields.push("keteranganSertifikatPM06 atau jenisSertifikat (salah satu wajib diisi)");
+    }
+  }
+
+  // Periksa jika field lainnya belum diisi
+  fieldsForCurrentStatus.forEach(field => {
+    if (!formData[field] || formData[field] === "") {
+      missingFields.push(field);
+    }
+  });
+
+  return missingFields;
+  };
+
+  const checkDistributionFields = () => {
+    // Field distribusi sertifikat yang harus diisi
+    const distributionFields = [
+      "distribusiSertifikatPengirim", 
+      "distribusiSertifikatPengirimTanggal", 
+      "distribusiSertifikatPenerima", 
+      "distribusiSertifikatPenerimaTanggal"
+    ];
+  
+    // Periksa apakah semua field distribusi sertifikat sudah terisi
+    for (const field of distributionFields) {
+      if (!formData[field] || formData[field] === "") {
+        return false; // Jika ada field yang kosong, return false
+      }
+    }
+  
+    return true; // Semua field terisi, return true
   };
   
-
-  // Tambahkan/modifikasi di useEffect untuk set default jenis sertifikat
+  
   const getNextStatus = (currentStatus) => {
     const statusOrderList = [
       "New Order",
       "Entry",
       "Diproses - Lapangan",
       "Diproses - Sertifikat",
-      "Closed - tgl",
+      "Closed",
       "Closed Invoice",
       "Selesai"
     ];
@@ -349,14 +438,28 @@ const uploadFile = async (fileKey, file) => {
     const currentIndex = statusOrderList.indexOf(currentStatus);
   
     if (currentIndex === -1 || currentIndex === statusOrderList.length - 1) {
-      // Jika sudah mencapai status terakhir atau status invalid, tidak ada perubahan
+      // If already at the last status or invalid status, no change
       return null;
     }
   
-    // Kembalikan status berikutnya
+    // Return the next status
     return statusOrderList[currentIndex + 1];
   };
+
+ // Mendapatkan daftar field yang akan ditampilkan berdasarkan status order
+const fieldsToShowBasedOnStatus = getFieldsToShowByStatus(currentStatusOrder);
+
+// Modifikasi kode untuk menampilkan field berdasarkan status dan peran
+// Tambahkan kondisi pengecekan apakah field perlu ditampilkan berdasarkan status dan peran
+const shouldShowField = (fieldName) => {
+  const hasFieldAccessPermission = fieldsToShow.includes(fieldName);
+  const isFieldRelevantForCurrentStatus = fieldsToShowBasedOnStatus.includes(fieldName);
   
+  // Field hanya ditampilkan jika memiliki akses dan relevan dengan status saat ini
+  return hasFieldAccessPermission && isFieldRelevantForCurrentStatus;
+};
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
   
@@ -373,7 +476,7 @@ const uploadFile = async (fileKey, file) => {
     if (missingFields.length > 0) {
       alert(`Field berikut harus diisi untuk status '${formData.statusOrder}':\n${missingFields.join(", ")}`);
       return; // Hentikan proses submit jika data belum lengkap
-  }
+    }
 
   // Tentukan status berikutnya
   const nextStatus = getNextStatus(formData.statusOrder);
@@ -382,7 +485,14 @@ const uploadFile = async (fileKey, file) => {
       return;
   }
 
-  
+   // Cek apakah status order adalah "Closed Invoice" dan jika semua field distribusi sertifikat terisi
+   if (formData.statusOrder === "Closed Invoice" && checkDistributionFields()) {
+    setFormData((prevData) => ({
+      ...prevData,
+      statusOrder: "Selesai",  // Ubah status menjadi "Selesai" jika semua field distribusi sertifikat sudah terisi
+    }));
+  }
+
     const payload = {
       ...formData,
       statusOrder: nextStatus, // Pastikan statusOrder sudah ada di sini
@@ -398,29 +508,6 @@ const uploadFile = async (fileKey, file) => {
     try {
       // Get existing data first
       const existingData = await getOrderById(id);
-
-    //   // Tentukan status order berdasarkan field yang terisi
-    // let newStatus = formData.statusOrder || "New Order";  // Status yang sudah ada atau status awal
-
-    // // Cek dan set status berikutnya berdasarkan status yang ada
-    // const missingFields = checkRequiredFields(newStatus) || [];
-
-    // if (missingFields.length > 0) {
-    //   alert(`Field berikut harus diisi untuk status '${newStatus}':\n${missingFields.join(", ")}`);
-    //   return;
-    // }
-
-    // // Tentukan status berikutnya jika data sudah lengkap
-    // const nextStatus = getNextStatus(newStatus);
-    // if (nextStatus) {
-    //   newStatus = nextStatus;
-    // }
-
-    // // Update status dan tanggal perubahan
-    // payload.statusOrder = newStatus;
-    // payload.tanggalStatusOrder = Timestamp.now();  // Set tanggal perubahan status
-
-      
       // Upload all files in parallel and track which ones are being uploaded
       const fileKeys = Object.keys(files).filter(key => files[key] !== null);
       
@@ -461,6 +548,7 @@ const uploadFile = async (fileKey, file) => {
         ...existingData,
         ...payload,
         updatedAt: Timestamp.now(),
+        lastUpdatedBy: userEmail,
         documents: {
           ...formData.documents,
           ...uploadedDocuments,
@@ -508,6 +596,7 @@ const uploadFile = async (fileKey, file) => {
           statusOrder: data.statusOrder,  // Menampilkan status terbaru
           // tanggalStatusOrder: data.tanggalStatusOrder,  // Menampilkan tanggal perubahan status
         });
+        setCurrentStatusOrder(data.statusOrder || "New Order");
       }
     } catch (error) {
       console.error("❌ Error fetching order:", error);
@@ -615,11 +704,15 @@ const renderFileUpload = (fileKey, displayName) => {
               </>
             ) : (
               <>
-                <FiUpload className="mr-2" />
-                <span>Pilih file untuk diunggah</span>
+                <div className="space-y-4">
+                  <FiUpload className="h-12 w-12 text-blue-400" />
+                  <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
+                  <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
+                </div>
               </>
             )}
           </div>
+          
         </div>
       )}
     </div>
@@ -692,45 +785,31 @@ const renderFileUpload = (fileKey, displayName) => {
               />
             </div>
 
-            {/* Status Order - Admin Portofolio */}
-            {/* {userPeran === "CS" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status Order</label>
-                <select 
-                  name="statusOrder" 
-                  value={formData.statusOrder || ''} 
-                  onChange={handleChange} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  {["Tidak Archecking", "Archecking"].map(option => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </div>
-            )} */}
-
             {/* Tanggal Status Order - Admin Portofolio */}
-            {userPeran === "admin portofolio" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                  <FiCalendar className="mr-2 text-blue-500" /> Tanggal Status Order
-                </label>
-                <input 
-                  type="date" 
-                  name="tanggalStatusOrder" 
-                  value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""} 
-                  onChange={handleDateChange} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                />
-                {checkForIncompleteData('tanggalStatusOrder') && (
-                  <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
-                )}
-              </div>
-            )}
-
+            {(userPeran === "admin portofolio" || userPeran === "admin keuangan") && formData.statusOrder === "Diproses - Sertifikat" && (
+                shouldShowField('tanggalStatusOrder') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <FiCalendar className="mr-2 text-blue-500" /> Pilih Tanggal Closed
+                    </label>
+                    <input
+                      type="date"
+                      name="tanggalStatusOrder"
+                      value={formData.tanggalStatusOrder ? formatDateForInput(formData.tanggalStatusOrder) : ""}
+                      onChange={handleDateChange}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                    {checkForIncompleteData('tanggalStatusOrder') && (
+                      <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                    )}
+                  </div>
+                )
+              )}
+              
             {/* Fields for Admin Portofolio */}
             {userPeran === "admin portofolio" && (
               <>
+               {shouldShowField('jenisPekerjaan') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Pekerjaan</label>
                   <input 
@@ -744,7 +823,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
 
+                {shouldShowField('namaTongkang') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nama Tongkang</label>
                   <input 
@@ -758,7 +839,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
 
+                {shouldShowField('lokasiPekerjaan') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Lokasi Pekerjaan</label>
                   <input 
@@ -772,7 +855,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
-
+                )}
+                
+                {shouldShowField('estimasiTonase') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Estimasi Kuantitas</label>
                   <input 
@@ -786,7 +871,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
 
+                {shouldShowField('nilaiProforma') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Proforma</label>
                   <div className="relative">
@@ -805,7 +892,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     )}
                   </div>
                 </div>
+                )}
 
+                {shouldShowField('noSiSpk') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Si/Spk</label>
                   <input 
@@ -819,7 +908,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
 
+                {shouldShowField('tonaseDS') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tonase DS</label>
                   <input 
@@ -833,11 +924,14 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
+
               </>
             )}
 
             {/* Fields for Customer Service */}
             {userPeran === "customer service" && (
+              shouldShowField('nomorOrder') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Order</label>
                 <input 
@@ -851,11 +945,12 @@ const renderFileUpload = (fileKey, displayName) => {
                   <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                 )}
               </div>
-            )}
+            ))}
 
             {/* Fields for Admin Keuangan */}
             {userPeran === "admin keuangan" && (
               <>
+                {shouldShowField('nomorInvoice') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Invoice</label>
                   <input 
@@ -869,7 +964,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                  )}
 
+                  {shouldShowField('fakturPajak') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Faktur Pajak</label>
                   <input 
@@ -883,7 +980,9 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                  )}
 
+                  {shouldShowField('dokumenSelesaiINV') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen Selesai INV</label>
                   <input 
@@ -897,24 +996,29 @@ const renderFileUpload = (fileKey, displayName) => {
                     <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                   )}
                 </div>
+                )}
               </>
             )}
 
-            {/* Fields for Distribusi Sertifikat (All users) */}
+          {shouldShowField('distribusiSertifikatPengirim') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nama Yang  Mendistribusi/Mengirim Sertifikat</label>
-              <input 
-                type="text" 
-                name="distribusiSertifikatPengirim" 
-                value={formData.distribusiSertifikatPengirim || ""} 
-                onChange={handleChange} 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nama Yang Mendistribusi/Mengirim Sertifikat
+              </label>
+              <input
+                type="text"
+                name="distribusiSertifikatPengirim"
+                value={formData.distribusiSertifikatPengirim || ""}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {checkForIncompleteData('distribusiSertifikatPengirim') && (
                 <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
               )}
-            </div>
-
+           </div>
+          )}
+              
+            {shouldShowField('distribusiSertifikatPenerima') && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Nama Yang Menerima Sertifikat </label>
               <input 
@@ -928,6 +1032,8 @@ const renderFileUpload = (fileKey, displayName) => {
                 <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
               )}
             </div>
+            )}
+            
           </div>
 
           {/* Date Input Fields */}
@@ -939,6 +1045,7 @@ const renderFileUpload = (fileKey, displayName) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.keys(dateLabels).map((key) =>
                   fieldsToShow.includes(key) ? (
+                    shouldShowField(key) && !shouldShowField("tanggalStatusOrder")  && (
                     <div key={key} className="flex flex-col">
                       <label className="text-sm font-medium text-gray-700 mb-1">{dateLabels[key]}</label>
                       <input
@@ -952,13 +1059,17 @@ const renderFileUpload = (fileKey, displayName) => {
                         <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
                       )}
                     </div>
+                    )
                   ) : null
                 )}
               </div>
             </div>
           </div>
 
+          
           {/* Keterangan Sertifikat PM06 - Admin Portofolio */}
+          {shouldShowField('keteranganSertifikatPM06') && (
+            <>
           {userPeran === "admin portofolio" && (
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Sertifikat PM06</h3>
@@ -998,8 +1109,12 @@ const renderFileUpload = (fileKey, displayName) => {
               </div>
             </div>
           )}
+          </>
+          )}
 
           {/* Jenis Sertifikat - Admin Portofolio */}
+          {shouldShowField('jenisSertifikat') && (
+            <>
           {userPeran === "admin portofolio" && (
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Sertifikat</h3>
@@ -1008,17 +1123,17 @@ const renderFileUpload = (fileKey, displayName) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Sertifikat</label>
                   <select 
                     name="jenisSertifikat" 
-                    value={formData.jenisSertifikat || 'Tidak Terbit Sertifikat'} 
+                    value={formData.jenisSertifikat || '-'} 
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
-                    {["Tidak Terbit Sertifikat", "LOADING", "LS (PIK)", "SERTIFIKAT", "LAPORAN", "KALIBRASI", "HALAL"].map(option => (
+                    {["-","Tidak Terbit Sertifikat", "LOADING", "LS (PIK)", "SERTIFIKAT", "LAPORAN", "KALIBRASI", "HALAL"].map(option => (
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
                 </div>
 
-                {formData.jenisSertifikat != "Tidak Terbit Sertifikat" && (
+                {formData.jenisSertifikat != "-" && formData.jenisSertifikat != "Tidak Terbit Sertifikat"   && (
                   <>
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Sertifikat</label>
@@ -1039,6 +1154,8 @@ const renderFileUpload = (fileKey, displayName) => {
               </div>
             </div>
           )}
+          </>
+          )}
 
           {/* File Uploads Section */}
           <div className="mt-8">
@@ -1048,18 +1165,30 @@ const renderFileUpload = (fileKey, displayName) => {
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="grid grid-cols-1 gap-4">
                 {/* Si/Spk Document - Admin Portofolio */}
+                {shouldShowField('siSpk') && (
+                  <>
                 {userPeran === "admin portofolio" && (
                   renderFileUpload("siSpk", "Upload Dokumen Si/Spk")
                 )}
+                </>
+                )}
 
                 {/* Invoice Document - Admin Keuangan */}
+                {shouldShowField('invoice') && (
+                  <>
                 {userPeran === "admin keuangan" && (
                   renderFileUpload("invoice", "Upload Dokumen Invoice")
                 )}
+                </>
+                )}
 
                 {/* Faktur Pajak Document - Admin Keuangan */}
+                {shouldShowField('fakturPajak') && (
+                  <>
                 {userPeran === "admin keuangan" && (
                   renderFileUpload("fakturPajak", "Upload Dokumen Faktur Pajak")
+                )}
+                </>
                 )}
               </div>
             </div>

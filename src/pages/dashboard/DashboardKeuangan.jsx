@@ -94,7 +94,7 @@ const DashboardKeuangan = () => {
         totalProforma += isNaN(Number(data.nilaiProforma)) ? 0 : Number(data.nilaiProforma);
   
         // Hitung jumlah order berdasarkan status
-        if (data.statusOrder === "Diproses") inProcessOrders++;
+        if (data.statusOrder === "Diproses - Lapangan") inProcessOrders++;
         if (data.statusOrder === "Selesai") completedOrders++;
   
         // Hitung jumlah order per bulan berdasarkan tanggalOrder
@@ -218,7 +218,7 @@ const DashboardKeuangan = () => {
                   <ClockIcon className="h-6 w-6 text-orange-500" />
                 </div>
                 <p className="text-3xl font-bold text-orange-500 mt-1">{summary.inProcessOrders}</p>
-                <p className="text-xs text-gray-500 mt-1">Status: Diproses</p>
+                <p className="text-xs text-gray-500 mt-1">Status: Diproses - Lapangan</p>
               </div>
               
               {/* Completed Orders Card */}

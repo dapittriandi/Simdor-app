@@ -103,7 +103,7 @@ const EditOrder = () => {
     proformaSerahKeOps: "Proforma Serah ke Ops",
     proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
-    distribusiSertifikatPenerimaTanggal: "Tanggal Distribusi Sertifikat Penerima",
+    distribusiSertifikatPenerimaTanggal: "Tanggal Diterima Sertifikat",
   };
 
   const handleChange = (e) => {
@@ -142,6 +142,25 @@ const EditOrder = () => {
     const { name, files } = e.target;
     if (!files.length) return;
   
+    const file = e.target.files[0];
+
+    // Cek apakah ada file yang dipilih
+    if (!file) return;
+
+   // Pengecekan Tipe File (hanya menerima PDF dan gambar, misalnya)
+   const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']; // Ekstensi yang diperbolehkan
+   if (!allowedTypes.includes(file.type)) {
+     alert('Tipe file tidak didukung. Harap pilih file PDF atau gambar (JPEG/PNG).');
+     return; // Hentikan jika tipe file tidak sesuai
+   }
+ 
+   // Pengecekan Ukuran File (misalnya, maksimal 5MB)
+   const maxSize = 5 * 1024 * 1024; // 5MB dalam byte
+   if (file.size > maxSize) {
+     alert('Ukuran file terlalu besar. Harap pilih file yang kurang dari 5MB.');
+     return; // Hentikan jika ukuran file melebihi batas
+   }
+
     // Menyimpan file sementara di state
   setFiles((prevFiles) => ({
     ...prevFiles,
@@ -530,8 +549,11 @@ const uploadFile = async (fileKey, file) => {
                 </>
               ) : (
                 <>
-                  <FiUpload className="mr-2" />
-                  <span>Pilih file untuk diunggah</span>
+                  <div className="space-y-4">
+                    <FiUpload className="h-12 w-12 text-blue-400" />
+                    <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
+                    <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
+                </div>
                 </>
               )}
             </div>

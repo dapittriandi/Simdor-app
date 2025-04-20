@@ -104,7 +104,24 @@ const CreateOrder = () => {
   
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    
+    // Cek apakah ada file yang dipilih
+    if (!file) return;
+  
+    // Pengecekan Tipe File (hanya menerima PDF dan gambar, misalnya)
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']; // Ekstensi yang diperbolehkan
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipe file tidak didukung. Harap pilih file PDF atau gambar (JPEG/PNG).');
+      return; // Hentikan jika tipe file tidak sesuai
+    }
+  
+    // Pengecekan Ukuran File (misalnya, maksimal 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB dalam byte
+    if (file.size > maxSize) {
+      alert('Ukuran file terlalu besar. Harap pilih file yang kurang dari 5MB.');
+      return; // Hentikan jika ukuran file melebihi batas
+    }
+
+   
     // Tandai field sebagai sudah disentuh
     setTouchedFields({
       ...touchedFields,
@@ -442,13 +459,13 @@ const CreateOrder = () => {
                 </h3>
                 <div className="space-y-4">
                 {getFieldErrorDisplay("siSpkFile")}
-    {/* Atau tambahkan pesan error secara langsung */}
-    {touchedFields["siSpkFile"] && fieldErrors.siSpkFile && (
-      <div className="text-red-500 text-xs mt-1 flex items-center">
-        <AlertCircle className="w-3 h-3 mr-1" />
-        {fieldErrors.siSpkFile}
-      </div>
-    )}
+                  {/* Atau tambahkan pesan error secara langsung */}
+                  {touchedFields["siSpkFile"] && fieldErrors.siSpkFile && (
+                    <div className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      {fieldErrors.siSpkFile}
+                    </div>
+                  )}
                   <div className={`border-2 ${
                     touchedFields["file.siSpk"] && fieldErrors.siSpkFile 
                       ? "border-red-300" 
@@ -493,7 +510,7 @@ const CreateOrder = () => {
                           <Upload className="h-12 w-12 text-blue-400" />
                           <div>
                             <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
-                            <p className="text-xs text-gray-500 mt-1">PDF, DOCX, atau JPG. Max 10MB</p>
+                            <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
                           </div>
                         </div>
                       )}

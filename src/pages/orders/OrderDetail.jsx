@@ -24,9 +24,9 @@ const OrderDetail = () => {
       setError(null);
   
       try {
-        console.log("Fetching order with ID:", id);
+        // console.log("Fetching order with ID:", id);
         const data = await getOrderById(id);
-        console.log("Order Data:", data);
+        // console.log("Order Data:", data);
   
         if (data) {
           setOrder(data);
@@ -82,6 +82,7 @@ const OrderDetail = () => {
       "koordinator": [],
       "customer service": ["nomorOrder", "tanggalOrder"],
       "admin keuangan": [
+        "tanggalStatusOrder",
         "tanggalPengirimanInvoice",
         "tanggalPengirimanFaktur",
         "nomorInvoice",
@@ -172,7 +173,7 @@ const OrderDetail = () => {
         { key: "distribusiSertifikatPengirim", label: "Nama yang Mendistribusikan Sertifikat" },
         { key: "distribusiSertifikatPengirimTanggal", label: "Tanggal Distribusi Pengiriman Sertifikat", isDate: true },
         { key: "distribusiSertifikatPenerima", label: "Nama Penerima Sertifikat" },
-        { key: "distribusiSertifikatPenerimaTanggal", label: "Tanggal Distribusi Penerimaan Sertifikat", isDate: true },
+        { key: "distribusiSertifikatPenerimaTanggal", label: "Tanggal Diterima Sertifikat", isDate: true },
       ]
     },
     {
@@ -205,6 +206,22 @@ const OrderDetail = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const showLengkapiButton = () => {
+    if (order?.statusOrder === "New Order" && userPeran === "customer service") {
+      return true;
+    }
+    if ((order?.statusOrder === "Entry" || order?.statusOrder === "Diproses - Lapangan") && userPeran === "admin portofolio") {
+      return true;
+    }
+    if ((order?.statusOrder === "Diproses - Sertifikat" || order?.statusOrder === "Closed" || order?.statusOrder === "Closed Invoice") && userPeran === "admin portofolio" || userPeran === "admin keuangan") {
+      return true;
+    }
+    if (order?.statusOrder === "Closed invoice" || order?.statusOrder === "Closed Distribusi" && ["admin portofolio", "admin keuangan", "customer service"].includes(userPeran)) {
+      return true;
+    }
+    return false;
   };
 
   if (loading && !mounted) {
@@ -329,6 +346,7 @@ const OrderDetail = () => {
                     Edit
                   </button>
                 ) : (
+                  showLengkapiButton() && (
                   <button 
                     onClick={() => navigate(`/orders/${portofolio}/detail/lengkapi/${id}`)}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center"
@@ -336,7 +354,9 @@ const OrderDetail = () => {
                     <Edit className="w-4 h-4 mr-2" />
                     Lengkapi Data
                   </button>
-                )}
+                  )
+                )
+                }
                 
                 {userPeran === "admin portofolio" && userBidang === portofolio && (
                   <button 

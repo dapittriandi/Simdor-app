@@ -235,20 +235,22 @@ const OrdersPage = () => {
   // Get status badge styling
   const getStatusClass = (status) => {
     switch (status) {
-      case "Closed":
+      case "Entry":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "Diproses":
+      case "Diproses - Lapangan":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
       case "Archecking":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "Draft":
+      case "New Order":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
       case "Selesai":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "Next Order":
+      case "Diproses - Sertifikat":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
+      case "Closed":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
     }
   };
 
@@ -330,12 +332,13 @@ const OrdersPage = () => {
                   className="pl-10 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none appearance-none"
                 >
                   <option value="">Semua Status</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Diproses">Diproses</option>
-                  <option value="Selesai">Selesai</option>
+                  <option value="New Order">New Order</option>
+                  <option value="Entry">Entry</option>
+                  <option value="Diproses - Lapangan">Diproses - Lapangan</option>
+                  <option value="Diproses - Serifikat">Diproses - Serifikat</option>
                   <option value="Closed">Closed</option>
-                  <option value="Hold">Hold</option>
-                  <option value="Next Order">Next Order</option>
+                  <option value="Closed Invoide">Closed Invoide</option>
+                  <option value="Selesai">Selesai</option>
                   <option value="Archecking">Archecking</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">

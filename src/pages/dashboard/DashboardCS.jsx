@@ -71,8 +71,8 @@ const DashboardCS = () => {
       const months = getLast12Months(); // Ambil 12 bulan terakhir
       let recentOrdersData = [];
 
-      const processingStatuses = ["Diproses", "Archecking"]; // Definisikan status 'processing'
-      const completedStatus = "Closed";
+      const processingStatuses = ["Diproses - Lapangan"]; // Definisikan status 'processing'
+      const completedStatus = "Selesai";
 
       snapshot.forEach((doc) => {
         const data = doc.data();
@@ -151,20 +151,22 @@ const DashboardCS = () => {
   // Fungsi styling status badge yang diperbarui
   const getStatusClass = (status) => {
     switch (status) {
-      case "Closed":
+      case "Entry":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "Diproses":
+      case "Diproses - Lapangan":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
       case "Archecking":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "Draft":
+      case "New Order":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
-      case "Selesai": // Status sebelum 'Closed'?
+      case "Selesai":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "Next Order":
+      case "Diproses - Sertifikat":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
+      case "Closed":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200"; // Untuk status tidak dikenal
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
     }
   };
 
