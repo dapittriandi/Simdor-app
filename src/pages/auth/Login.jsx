@@ -129,7 +129,7 @@ const Login = () => {
             
             {/* Enhanced title with modern styling */}
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-800">Monitoring Order</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Monitoring Data Order</h1>
               <p className="text-gray-600 mt-1">Masuk ke akun Anda</p>
               <div className="mt-3 mx-auto w-16 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
             </div>
