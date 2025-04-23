@@ -121,8 +121,8 @@ const Login = () => {
             {/* Logo with subtle entrance animation */}
             <div className="flex justify-center mb-6">
               <img 
-                src="../../../src/assets/logo/logobg.png" 
-                alt="Logo" 
+                src="../../assets/logo/logo-sci.jpeg" 
+                alt="Logo-sci" 
                 className="h-20 transform transition-all duration-700 hover:scale-105"
               />
             </div>
