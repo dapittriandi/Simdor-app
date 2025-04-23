@@ -3,6 +3,7 @@ import { auth, db } from "../../services/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import logo from '../../assets/logo/logo-sci.jpeg';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -121,7 +122,7 @@ const Login = () => {
             {/* Logo with subtle entrance animation */}
             <div className="flex justify-center mb-6">
               <img 
-                src="../../../public/logo/logo-sci.jpeg" 
+                src={logo} 
                 alt="Logo-sci" 
                 className="h-20 transform transition-all duration-700 hover:scale-105"
               />
