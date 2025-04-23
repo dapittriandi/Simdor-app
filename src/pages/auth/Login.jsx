@@ -121,7 +121,7 @@ const Login = () => {
             {/* Logo with subtle entrance animation */}
             <div className="flex justify-center mb-6">
               <img 
-                src="../src/assets/logo/logobg.png" 
+                src="../../assets/logo/logobg.png" 
                 alt="Logo" 
                 className="h-20 transform transition-all duration-700 hover:scale-105"
               />
@@ -241,7 +241,7 @@ const Login = () => {
           {/* Footer with blue accent */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-600">
-              © {new Date().getFullYear()} SUCOFINDO. All rights reserved.
+              © {new Date().getFullYear()} SUCOFINDO CABANG JAMBI. All rights reserved.
             </p>
           </div>
         </div>
