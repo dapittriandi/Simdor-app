@@ -12,7 +12,7 @@ export const uploadToCloudinary = async (file) => {
   try {
     // Mengirim file ke Cloudinary untuk diupload
     const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
       formData, // FormData di sini
       {
         headers: {

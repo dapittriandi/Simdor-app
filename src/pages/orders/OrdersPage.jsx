@@ -61,7 +61,7 @@ const OrdersPage = () => {
       let q = query(
         collection(db, "orders"),
         where("portofolio", "==", portofolio),
-        orderBy("tanggalOrder", "desc"),
+        orderBy("createdAt", "desc"),
         limit(perPage)
       );
 

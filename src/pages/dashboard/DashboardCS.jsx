@@ -251,16 +251,16 @@ const DashboardCS = () => {
                             <ClockIcon className="h-6 w-6 text-orange-500" />
                         </div>
                         <p className="text-3xl font-bold text-orange-500 mt-1">{summary.processingOrders}</p>
-                        <p className="text-xs text-gray-500 mt-1">Status: Diproses, Archecking</p>
+                        <p className="text-xs text-gray-500 mt-1">Status: Diproses - Lapangan</p>
                     </div>
                      {/* Kartu Order Selesai (Closed) */}
                      <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                         <div className="flex justify-between items-start mb-2">
-                            <h3 className="text-base font-semibold text-gray-600">Order Closed</h3>
+                            <h3 className="text-base font-semibold text-gray-600">Order Selesai</h3>
                             <CheckCircleIcon className="h-6 w-6 text-green-500" />
                         </div>
                         <p className="text-3xl font-bold text-green-500 mt-1">{summary.completedOrders}</p>
-                         <p className="text-xs text-gray-500 mt-1">Status: Closed</p>
+                         <p className="text-xs text-gray-500 mt-1">Status: Selesai</p>
                     </div>
                     {/* Kartu Status Lain (jika perlu ditampilkan) */}
                      <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
@@ -269,7 +269,7 @@ const DashboardCS = () => {
                              <ListBulletIcon className="h-6 w-6 text-gray-500" />
                         </div>
                         <p className="text-3xl font-bold text-gray-600 mt-1">{summary.otherStatusOrders}</p>
-                         <p className="text-xs text-gray-500 mt-1">Status: Draft, Selesai, Next Order, dll.</p>
+                         <p className="text-xs text-gray-500 mt-1">Status: New Order, Entry, Closed, dll.</p>
                     </div>
                 </>
             )}

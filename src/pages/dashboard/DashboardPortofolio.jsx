@@ -209,7 +209,7 @@ const getLast12Months = () => {
                   <CheckCircleIcon className="h-6 w-6 text-green-500" />
                 </div>
                 <p className="text-3xl font-bold text-green-500 mt-1">{completedOrders}</p>
-                <p className="text-xs text-gray-500 mt-1">Status: Closed</p>
+                <p className="text-xs text-gray-500 mt-1">Status: Selesai</p>
               </div>
               
               {/* Pending Orders Card */}

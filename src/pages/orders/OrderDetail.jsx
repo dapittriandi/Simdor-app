@@ -215,10 +215,13 @@ const OrderDetail = () => {
     if ((order?.statusOrder === "Entry" || order?.statusOrder === "Diproses - Lapangan") && userPeran === "admin portofolio") {
       return true;
     }
-    if ((order?.statusOrder === "Diproses - Sertifikat" || order?.statusOrder === "Closed" || order?.statusOrder === "Closed Invoice") && userPeran === "admin portofolio" || userPeran === "admin keuangan") {
+    if ((order?.statusOrder === "Diproses - Sertifikat" ) && userPeran === "admin portofolio" || userPeran === "admin keuangan") {
       return true;
     }
-    if (order?.statusOrder === "Closed invoice" || order?.statusOrder === "Closed Distribusi" && ["admin portofolio", "admin keuangan", "customer service"].includes(userPeran)) {
+    if ((order?.statusOrder === "Closed Invoice" || order?.statusOrder === "Closed") && userPeran === "admin keuangan") {
+      return true;
+    }
+    if ( order?.statusOrder === "Closed Distribusi" && ["admin portofolio", "admin keuangan", "customer service"].includes(userPeran)) {
       return true;
     }
     return false;
@@ -312,7 +315,7 @@ const OrderDetail = () => {
                     ? `${order[field.key]} pada ${formatDate(order.tanggalStatusOrder)}`
                     : field.isDate
                     ? formatDate(order[field.key]) 
-                    : field.key === "nilaiProforma" && order[field.key] 
+                    : field.key === "nilaiProforma"  || field.key === "dokumenSelesaiINV"  && order[field.key] 
                     ? `Rp ${Number(order[field.key]).toLocaleString()}`
                     : order[field.key] || "-"}
                           </p>

@@ -218,7 +218,7 @@ const getFieldsToShowByStatus = (status) => {
     // Update state untuk menyimpan file yang dipilih
   setFiles((prevFiles) => ({
     ...prevFiles,
-    [name]: file[0], // Simpan file pertama yang dipilih
+    [name]: file, // Simpan file pertama yang dipilih
   }));
 
   // Update formData.documents
@@ -227,7 +227,7 @@ const getFieldsToShowByStatus = (status) => {
     documents: {
       ...prevFormData.documents,
       [name]: {
-        fileName: files[0].name,
+        fileName: files.name,
         fileUrl: "", // Dapatkan URL file jika sudah diupload
         uploadedBy: userData.email,
         uploadedAt: Timestamp.now(),
@@ -239,9 +239,9 @@ const getFieldsToShowByStatus = (status) => {
     setFilePreviews((prevPreviews) => ({
       ...prevPreviews,
       [name]: {
-        fileName: files[0].name,
+        fileName: files.name,
         fileSize: (files[0].size / 1024).toFixed(2) + " KB",
-        fileType: files[0].type,
+        fileType: files.type,
       },
     }));
   };
@@ -1216,7 +1216,7 @@ const renderFileUpload = (fileKey, displayName) => {
               ) : (
                 <>
                   <FiCheck className="mr-2" />
-                  Simpan Perubahan
+                  Simpan
                 </>
               )}
             </button>
