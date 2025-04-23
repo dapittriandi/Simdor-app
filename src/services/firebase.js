@@ -9,13 +9,14 @@ import { getStorage,  } from "firebase/storage";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyC2feWLoe_UBEESfYsL15aj1fetL4R4xUw",
-  authDomain: "simdor-app.firebaseapp.com",
-  projectId: "simdor-app",
-  storageBucket: "simdor-app.firebasestorage.app",
-  messagingSenderId: "271892250527",
-  appId: "1:271892250527:web:670e4ad4996a83e52387aa",
-  measurementId: "G-QM1NRWE26Y"
+  // apiKey: "AIzaSyC2feWLoe_UBEESfYsL15aj1fetL4R4xUw",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
