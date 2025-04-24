@@ -237,7 +237,7 @@ const getLast12Months = () => {
             {/* Grid for Progress and Chart (similar to CS dashboard layout) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Progress Bar (wider column) */}
-              <div className="lg:col-span-1 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
+              <div className="lg:col-span-3 bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
                 <div className="p-5 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <CheckCircleIcon className="h-6 w-6 text-gray-600"/>
@@ -278,7 +278,7 @@ const getLast12Months = () => {
               </div>
 
               {/* Monthly Trend Chart (wider column) */}
-              <div className="lg:col-span-2 bg-white shadow-md rounded-lg border border-gray-200">
+              <div className="lg:col-span-3 bg-white shadow-md rounded-lg border border-gray-200">
                 <div className="p-5 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <ChartBarIcon className="h-6 w-6 text-gray-600"/>
