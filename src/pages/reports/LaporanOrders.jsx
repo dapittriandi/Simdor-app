@@ -173,6 +173,7 @@ const LaporanOrders = () => {
           updatedAt: formatDate(ensureValidDateInput(order.updatedAt)), // Format updatedAt
           // Format currency
           nilaiProforma: formatCurrency(order.nilaiProforma),
+          dokumenSelesaiINV: formatCurrency(order.dokumenSelesaiINV),
           // Format number or return '-'
           tonaseDS: order.tonaseDS ? Number(order.tonaseDS).toLocaleString("id-ID") : "-",
           estimasiTonase: order.estimasiTonase ? Number(order.estimasiTonase).toLocaleString("id-ID") : "-",
@@ -258,6 +259,11 @@ const LaporanOrders = () => {
          // Jika pakai koma sebagai ribuan (id-ID), ganti koma
         exportItem.nilaiProforma = exportItem.nilaiProforma.replace(/[Rp.\s]/g, '').replace(/,/g, '');
       }
+      if (exportItem.nilaiProforma && typeof exportItem.nilaiProforma === 'string') {
+         // Hapus 'Rp ', spasi, dan titik ribuan (jika pakai titik)
+         // Jika pakai koma sebagai ribuan (id-ID), ganti koma
+        exportItem.nilaiProforma = exportItem.dokumenSelesaiINV.replace(/[Rp.\s]/g, '').replace(/,/g, '');
+      }
        if (exportItem.tonaseDS && typeof exportItem.tonaseDS === 'string') {
             exportItem.tonaseDS = exportItem.tonaseDS.replace(/\./g, ''); // Hapus titik ribuan
        }
@@ -339,7 +345,7 @@ const LaporanOrders = () => {
   const portofolioList = ["BATUBARA", "KSP", "PIK", "INDUSTRI", "HMPM", "AEBT", "MINERAL", "HALAL", "LABORATORIUM", "SERCO", "LSI"];
 
   // Status options for filter dropdown
-  const statusOptions = [ "New Order", "Entry", "Archecking", "Diproses - Lapangan", "Diproses - Sertifikat", "Selesai", "Closed"];
+  const statusOptions = [ "New Order", "Entry", "Archecking", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed", "Closed Invoice", "Selesai", ];
 
   // Get status badge styling
   const getStatusClass = (status) => {

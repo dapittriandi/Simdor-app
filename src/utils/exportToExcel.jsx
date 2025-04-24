@@ -79,17 +79,17 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
     console.log("Original timestamp value:", timestamp);
     
     const dateValue = formatDate(timestamp);
-    console.log("Converted to date object:", dateValue);
+    // console.log("Converted to date object:", dateValue);
     
     if (dateValue instanceof Date) {
-      console.log("Valid date - using date format");
+      // console.log("Valid date - using date format");
       return { 
         t: 'd', 
         v: dateValue,
         z: 'dd/mm/yyyy' 
       };
     } else {
-      console.log("Invalid date - using dash placeholder");
+      // console.log("Invalid date - using dash placeholder");
       return { t: 's', v: '-' };
     }
   };
@@ -123,9 +123,9 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
   // Convert orders data to array format
   const data = orders.map((order) => {
     // Debug tanggal untuk troubleshooting
-    console.log("Tanggal Serah Order ke CS:", order.tanggalSerahOrderKeCs);
-    const dateCell = getDateCell(order.tanggalSerahOrderKeCs);
-    console.log("Formatted date:", dateCell);
+    // console.log("Tanggal Serah Order ke CS:", order.tanggalSerahOrderKeCs);
+    // const dateCell = getDateCell(order.tanggalSerahOrderKeCs);
+    // console.log("Formatted date:", dateCell);
     
     return [
       order.pelanggan || "-",
