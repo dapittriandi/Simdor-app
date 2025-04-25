@@ -10,6 +10,7 @@ import {
   ListBulletIcon, // Untuk Daftar Order
   ExclamationTriangleIcon // Untuk error (jika perlu)
 } from '@heroicons/react/24/outline'; // Gunakan outline icons
+import { useNavigate } from "react-router-dom";
 
 const DashboardCS = () => {
   const [summary, setSummary] = useState({
@@ -22,10 +23,26 @@ const DashboardCS = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // State untuk error fetching
+  const navigate = useNavigate();
+  const userData = JSON.parse(localStorage.getItem("user")) || {};
+  // const userEmail = userData?.email || "";
+  const userPeran = userData.peran || "";
+  // const userBidang = userData.bidang || "";
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran !== "customer service") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     fetchOrderSummary();
-  }, []);
+  }, [userPeran]);
 
   const getCurrentMonthYear = () => {
     const now = new Date();

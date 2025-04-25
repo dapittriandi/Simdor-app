@@ -10,8 +10,10 @@ import {
   CurrencyDollarIcon, // For Financial data
   ExclamationTriangleIcon // For errors (if needed)
 } from '@heroicons/react/24/outline'; // Use outline icons like in DashboardCS
+import { useNavigate } from "react-router-dom";
 
 const DashboardPortofolio = () => {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [totalOrders, setTotalOrders] = useState(0);
   const [completedOrders, setCompletedOrders] = useState(0);
@@ -53,6 +55,18 @@ const getLast12Months = () => {
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (storedUser) setUserData(storedUser);
+    const userPeran = storedUser.peran || "";
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran !== "admin portofolio") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
   }, []);
   
 

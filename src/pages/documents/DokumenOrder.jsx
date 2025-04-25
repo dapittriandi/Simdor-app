@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { getOrders } from "../../services/orderServices";
 import { FileText, Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DokumenOrder = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,15 +16,29 @@ const DokumenOrder = () => {
   // ✅ Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const userData = JSON.parse(localStorage.getItem("user")) || {};
+  // **Cegah pemanggilan hooks dalam kondisi IF**
+  const userPortofolio = userData?.bidang || "";
+  const userPeran = userData?.peran || "";
 
   // ✅ Ambil user dari localStorage (DILUAR IF)
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    } 
+    if (userPeran !== "admin portofolio" && userPeran !== "admin keuangan") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     setMounted(true);
     const storedUser = JSON.parse(localStorage.getItem("user"));
     setUser(storedUser || null);
     
     return () => setMounted(false);
-  }, []);
+  }, [userPeran]);
 
   // ✅ Ambil data order dari Firestore
   useEffect(() => {
@@ -40,9 +56,7 @@ const DokumenOrder = () => {
     fetchOrders();
   }, []);
 
-  // **Cegah pemanggilan hooks dalam kondisi IF**
-  const userPortofolio = user?.bidang || "";
-  const userPeran = user?.peran || "";
+
 
   // ✅ Filter berdasarkan portofolio (DILUAR IF)
   useEffect(() => {

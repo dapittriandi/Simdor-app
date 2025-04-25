@@ -41,13 +41,13 @@ const OrdersPage = () => {
   useEffect(() => {
     if (!userPeran) {
       alert("Anda tidak memiliki akses!");
-      navigate("/login");
+      navigate("/");
       return;
     }
 
     if (userPeran === "admin portofolio" && userBidang !== portofolio) {
       alert("Anda tidak memiliki akses!");
-      navigate("/dashboard-portofolio");
+      navigate("/");
       return;
     }
 

@@ -76,7 +76,7 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
 
   // Fungsi helper untuk membuat sel tanggal dengan benar
   const getDateCell = (timestamp) => {
-    console.log("Original timestamp value:", timestamp);
+    // console.log("Original timestamp value:", timestamp);
     
     const dateValue = formatDate(timestamp);
     // console.log("Converted to date object:", dateValue);
@@ -144,11 +144,11 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
       order.namaTongkang || "-",
       order.lokasiPekerjaan || "-",
       { t: 'n', v: formatNumber(order.estimasiTonase), z: '#,##0' },
-      { t: 'n', v: formatNumber(order.tonaseDs), z: '#,##0' },
+      { t: 'n', v: formatNumber(order.tonaseDS), z: '#,##0' },
       getDateCell(order.tanggalPengirimanInvoice),
       getDateCell(order.tanggalPengirimanFaktur),
       { t: 'n', v: formatCurrency(order.nilaiProforma), z: '"Rp"#,##0.00' },
-      { t: 'n', v: formatCurrency(order.dokumenSelesaiInv), z: '"Rp"#,##0.00' },
+      { t: 'n', v: formatCurrency(order.dokumenSelesaiINV), z: '"Rp"#,##0.00' },
       order.nomorInvoice || "-",
       order.fakturPajak || "-",
       formatNamaTanggalGabung(order.distribusiSertifikatPengirim, order.distribusiSertifikatPengirimTanggal),

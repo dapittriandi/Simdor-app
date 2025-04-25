@@ -11,6 +11,7 @@ import {
   BuildingLibraryIcon, // For Portfolio
   ExclamationTriangleIcon // For errors (if needed)
 } from '@heroicons/react/24/outline'; // Use outline icons like in DashboardCS
+import { useNavigate } from "react-router-dom";
 
 // Function to capitalize first letter of each word
 const capitalizeFirstLetter = (str) => {
@@ -54,12 +55,27 @@ const DashboardKeuangan = () => {
     revenueByPortofolio: {},
     orderTrends: [],
   });
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // State for fetch errors
+  const userData = JSON.parse(localStorage.getItem("user")) || {};
+  const userPeran = userData.peran || "";
+  // const userBidang = userData.bidang || "";
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran !== "admin keuangan") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     fetchOrderSummary();
-  }, []);
+  }, [userPeran]);
 
  // Fungsi untuk memformat portofolio menjadi huruf kapital
   const formatPortofolio = (portofolio) => {

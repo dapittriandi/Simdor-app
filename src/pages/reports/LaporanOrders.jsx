@@ -3,8 +3,10 @@ import { db } from "../../services/firebase";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { exportToExcel } from "../../utils/exportToExcel";
 import { FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LaporanOrders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [startDate, setStartDate] = useState("");
@@ -27,13 +29,18 @@ const LaporanOrders = () => {
   const userBidang = userData.bidang || "";
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    } 
     setMounted(true);
     fetchOrders();
 
     return () => {
       setMounted(false);
     };
-  }, []);
+  }, [userPeran]);
 
   // Update pagination whenever filtered orders change
   useEffect(() => {
@@ -259,10 +266,10 @@ const LaporanOrders = () => {
          // Jika pakai koma sebagai ribuan (id-ID), ganti koma
         exportItem.nilaiProforma = exportItem.nilaiProforma.replace(/[Rp.\s]/g, '').replace(/,/g, '');
       }
-      if (exportItem.nilaiProforma && typeof exportItem.nilaiProforma === 'string') {
+      if (exportItem.dokumenSelesaiINV && typeof exportItem.dokumenSelesaiINV === 'string') {
          // Hapus 'Rp ', spasi, dan titik ribuan (jika pakai titik)
          // Jika pakai koma sebagai ribuan (id-ID), ganti koma
-        exportItem.nilaiProforma = exportItem.dokumenSelesaiINV.replace(/[Rp.\s]/g, '').replace(/,/g, '');
+        exportItem.dokumenSelesaiINV = exportItem.dokumenSelesaiINV.replace(/[Rp.\s]/g, '').replace(/,/g, '');
       }
        if (exportItem.tonaseDS && typeof exportItem.tonaseDS === 'string') {
             exportItem.tonaseDS = exportItem.tonaseDS.replace(/\./g, ''); // Hapus titik ribuan

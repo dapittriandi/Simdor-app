@@ -14,10 +14,22 @@ const EditOrder = () => {
   const [mounted, setMounted] = useState(false);
   const userData = JSON.parse(localStorage.getItem("user"));
   const userPeran = userData?.peran || "";
+  const userBidang = userData?.bidang || "";
   const [files, setFiles] = useState({});
   const [deletedFiles, setDeletedFiles] = useState([]);
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran === "admin portofolio" && userBidang !== portofolio) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     setMounted(true);
     const fetchOrder = async () => {
       setLoading(true);
@@ -32,7 +44,7 @@ const EditOrder = () => {
     };
     fetchOrder();
     return () => setMounted(false);
-  }, [id]);
+  }, [portofolio, userPeran, userBidang, id]);
 
   const [filePreviews, setFilePreviews] = useState({});
 
@@ -203,7 +215,7 @@ const uploadFile = async (fileKey, file) => {
       fileName: file.name
     };
   } catch (error) {
-    console.error(`Error uploading ${fileKey}:`, error);
+    // console.error(`Error uploading ${fileKey}:`, error);
     return null;
   } finally {
     // Clear uploading state
@@ -241,7 +253,7 @@ const uploadFile = async (fileKey, file) => {
       setFiles((prevFiles) => ({ ...prevFiles, [fileKey]: null })); // Reset state file
       alert("File berhasil dihapus!");
     } catch (error) {
-      console.error("Gagal menghapus file:", error);
+      // console.error("Gagal menghapus file:", error);
       alert("Terjadi kesalahan saat menghapus file.");
     } finally {
       setLoading(false);
@@ -445,7 +457,7 @@ const uploadFile = async (fileKey, file) => {
       alert("Data berhasil diperbarui!");
       navigate(`/orders/${portofolio}/detail/${id}`);
     } catch (error) {
-      console.error("Gagal mengunggah file:", error);
+      // console.error("Gagal mengunggah file:", error);
       alert("Terjadi kesalahan saat mengunggah file.");
     } finally {
       setLoading(false);

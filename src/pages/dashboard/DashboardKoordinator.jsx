@@ -12,6 +12,7 @@ import {
   TableCellsIcon, // For Status breakdown
   ExclamationTriangleIcon // For errors (if needed)
 } from '@heroicons/react/24/outline'; // Use outline icons like in DashboardCS
+import { useNavigate } from "react-router-dom";
 
 // Function to capitalize first letter of each word
 const capitalizeFirstLetter = (str) => {
@@ -22,6 +23,7 @@ const capitalizeFirstLetter = (str) => {
 };
 
 const DashboardKoordinator = () => {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState({
     totalOrders: 0,
     totalProforma: 0,
@@ -57,10 +59,23 @@ const DashboardKoordinator = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // State for fetch errors
+  const userData = JSON.parse(localStorage.getItem("user")) || {};
+  const userPeran = userData.peran || "";
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran !== "koordinator") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     fetchOrderSummary();
-  }, []);
+  }, [userPeran]);
 
   const fetchOrderSummary = async () => {
     setIsLoading(true);

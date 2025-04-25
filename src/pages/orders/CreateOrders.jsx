@@ -10,6 +10,8 @@ const CreateOrder = () => {
   const navigate = useNavigate();
   const userData = JSON.parse(localStorage.getItem("user"));
   const userEmail = userData?.email || "";
+  const userPeran = userData.peran || "";
+  const userBidang = userData.bidang || "";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,9 +44,20 @@ const CreateOrder = () => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran !== "admin portofolio") {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     setMounted(true);
     return () => setMounted(false);
-  }, []);
+  }, [portofolio, userPeran, userBidang]);
 
   // Validasi field secara realtime ketika formData berubah
   useEffect(() => {

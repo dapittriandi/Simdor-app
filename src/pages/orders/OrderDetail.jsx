@@ -18,6 +18,18 @@ const OrderDetail = () => {
   const userBidang = userData?.bidang || "";
 
   useEffect(() => {
+
+    if (!userPeran) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
+
+    if (userPeran === "admin portofolio" && userBidang !== portofolio) {
+      alert("Anda tidak memiliki akses!");
+      navigate("/");
+      return;
+    }
     setMounted(true);
     const fetchOrder = async () => {
       setLoading(true);
@@ -42,7 +54,7 @@ const OrderDetail = () => {
   
     fetchOrder();
     return () => setMounted(false);
-  }, [id]);
+  }, [portofolio, userPeran, userBidang, id]);
   
   // Fungsi untuk menampilkan tanggal dengan format yang rapi
   const formatDate = (value) => {
