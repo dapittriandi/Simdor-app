@@ -120,9 +120,9 @@ const getFieldsToShowByStatus = (status) => {
       return ["keteranganSertifikatPM06", "jenisSertifikat", "noSertifikatPM06", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"];
     case "Diproses - Sertifikat":
       return ["tanggalStatusOrder"];
-    case "Closed":
+    case "Closed Order":
       return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "dokumenSelesaiINV"];
-    case "Closed Invoice":
+    case "Invoice":
       return [
         "distribusiSertifikatPengirim",
         "distribusiSertifikatPengirimTanggal",
@@ -389,8 +389,8 @@ const uploadFile = async (fileKey, file) => {
       "Entry": ["tanggalPekerjaan", "tonaseDS"],
       "Diproses - Lapangan": [ "jenisSertifikat", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
       "Diproses - Sertifikat": ["tanggalStatusOrder"],
-      "Closed": ["nomorInvoice", "fakturPajak", "dokumenSelesaiINV"],
-      "Closed Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
+      "Closed Order": ["nomorInvoice", "fakturPajak", "dokumenSelesaiINV"],
+      "Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
     };
   
   // Check if the required fields for "Diproses - Lapangan" are valid
@@ -443,8 +443,8 @@ const uploadFile = async (fileKey, file) => {
       "Entry",
       "Diproses - Lapangan",
       "Diproses - Sertifikat",
-      "Closed",
-      "Closed Invoice",
+      "Closed Order",
+      "Invoice",
       "Selesai"
     ];
   
@@ -499,7 +499,7 @@ const shouldShowField = (fieldName) => {
   }
 
    // Cek apakah status order adalah "Closed Invoice" dan jika semua field distribusi sertifikat terisi
-   if (formData.statusOrder === "Closed Invoice" && checkDistributionFields()) {
+   if (formData.statusOrder === "Invoice" && checkDistributionFields()) {
     setFormData((prevData) => ({
       ...prevData,
       statusOrder: "Selesai",  // Ubah status menjadi "Selesai" jika semua field distribusi sertifikat sudah terisi

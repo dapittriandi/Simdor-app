@@ -88,7 +88,7 @@ const DashboardKoordinator = () => {
       let totalProforma = 0;
 
       const statusCounts = {
-        "New Order": 0, Entry: 0, "Diproses - Lapangan": 0, "Diproses - Sertifikat": 0, Closed: 0, "Closed Invoice" : 0, "Selesai": 0, Archecking: 0,
+        "New Order": 0, Entry: 0, "Diproses - Lapangan": 0, "Diproses - Sertifikat": 0, "Closed Order": 0, Invoice : 0, "Selesai": 0,
       };
 
       const orderTrends = {};
@@ -154,7 +154,7 @@ const DashboardKoordinator = () => {
     }
   };
 
-  const statusList = ["New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed", "Closed Invoice", "Selesai", "Archecking"];
+  const statusList = ["New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Invoice", "Selesai"];
   const portofolioList = ["Batubara", "Ksp", "Pik", "Industri", "Hmpm", "Aebt", "Mineral", "Halal", "Laboratorium", "Serco", "Lsi"];
 
   // Skeletons copied from CS dashboard for consistent loading states
@@ -181,7 +181,7 @@ const DashboardKoordinator = () => {
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
       case "Diproses - Lapangan":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "Archecking":
+      case "Invoice":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
       case "New Order":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
@@ -189,7 +189,7 @@ const DashboardKoordinator = () => {
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
       case "Diproses - Sertifikat":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "Closed":
+      case "Closed Order":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";

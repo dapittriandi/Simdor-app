@@ -205,18 +205,22 @@ const OrderDetail = () => {
     if (!status) return "bg-gray-100 text-gray-800";
     
     switch (status.toLowerCase()) {
-      case "diproses":
-        return "bg-blue-100 text-blue-800";
-      case "selesai":
-        return "bg-green-100 text-green-800";
-      case "closed":
-        return "bg-purple-100 text-purple-800";
-      case "next order":
-        return "bg-orange-100 text-orange-800";
-      case "archecking":
-        return "bg-yellow-100 text-yellow-800";
+      case "Entry":
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
+      case "Diproses - Lapangan":
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
+      case "Invoice":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
+      case "New Order":
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
+      case "Selesai":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
+      case "Diproses - Sertifikat":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
+      case "Closed Order":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
     }
   };
 
@@ -227,13 +231,14 @@ const OrderDetail = () => {
     if ((order?.statusOrder === "Entry" || order?.statusOrder === "Diproses - Lapangan") && userPeran === "admin portofolio") {
       return true;
     }
-    if ((order?.statusOrder === "Diproses - Sertifikat" ) && userPeran === "admin portofolio" || userPeran === "admin keuangan") {
+    if ((order?.statusOrder === "Diproses - Sertifikat" ) && userPeran === "admin portofolio") {
       return true;
     }
-    if ((order?.statusOrder === "Closed Invoice" || order?.statusOrder === "Closed") && userPeran === "admin keuangan") {
+    if (( order?.statusOrder === "Closed Order") && userPeran === "admin keuangan") {
       return true;
     }
-    if ( order?.statusOrder === "Closed Distribusi" && ["admin portofolio", "admin keuangan", "customer service"].includes(userPeran)) {
+    
+    if ( order?.statusOrder === "Invoice" && ["admin portofolio", "admin keuangan"].includes(userPeran)) {
       return true;
     }
     return false;

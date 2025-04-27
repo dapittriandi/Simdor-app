@@ -239,15 +239,15 @@ const OrdersPage = () => {
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
       case "Diproses - Lapangan":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "Archecking":
+      case "Invoice":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
       case "New Order":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
       case "Selesai":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      // case "Diproses - Sertifikat":
-      //    return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "Closed":
+      case "Diproses - Sertifikat":
+         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
+      case "Closed Order":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
@@ -336,10 +336,10 @@ const OrdersPage = () => {
                   <option value="Entry">Entry</option>
                   <option value="Diproses - Lapangan">Diproses - Lapangan</option>
                   <option value="Diproses - Sertifikat">Diproses - Sertifikat</option>
-                  <option value="Closed">Closed</option>
-                  <option value="Closed Invoide">Closed Invoide</option>
+                  <option value="Closed Order">Closed Order</option>
+                  <option value="Invoice">Invoice</option>
                   <option value="Selesai">Selesai</option>
-                  <option value="Archecking">Archecking</option>
+                  {/* <option value="Archecking">Archecking</option> */}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
