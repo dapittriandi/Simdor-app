@@ -1,8 +1,175 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getOrderById, deleteOrder } from "../../services/orderServices";
 import { Timestamp } from "firebase/firestore";
-import { Edit, Trash2, ArrowLeft, FileText, AlertTriangle, Check, Clock, RefreshCw } from "lucide-react";
+import { 
+  Edit, 
+  Trash2, 
+  ArrowLeft, 
+  FileText, 
+  AlertTriangle, 
+  Check, 
+  Clock, 
+  RefreshCw,
+  CheckCircle,
+  Circle,
+  ClipboardEdit,
+  HardHat,
+  FileCheck,
+  ClipboardCheck,
+  Receipt,
+  PackageCheck
+} from "lucide-react";
+
+const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
+  const stepRefs = useRef([]);
+  const [lineWidth, setLineWidth] = useState(0);
+
+  // Daftar step order
+  const steps = [
+    { id: 0, label: "New Order", description: "Order baru dibuat oleh Adm Ops, Menunggu CS Buka Order" },
+    { id: 1, label: "Entry", description: "Order sudah dibuka oleh CS, Menunggu Adm Ops Input Data Pekerjaan" },
+    { id: 2, label: "Diproses - Lapangan", description: "Sedang dikerjakan di lapangan oleh tim Ops, Menunggu Hasil Pekerjaan di lapangan" },
+    { id: 3, label: "Diproses - Sertifikat", description: "Upload Laporan Hasil Pekerjaan di lapangan oleh Adm Ops, Untuk Close Pekerjaan" },
+    { id: 4, label: "Closed Order", description: "Pekerjaan lapangan sudah ditutup oleh Adm Ops, Menunggu Pembayaran" },
+    { id: 5, label: "Invoice", description: "Pembayaran sudah dilakukan oleh pelanggan, Sertifikat segera di distribusikan oleh Adm Ops atau Adm keuangan" },
+    { id: 6, label: "Selesai", description: "Sertifikat telah didistribusikan oleh Adm Ops atau Adm keuangan, order Selesai" },
+  ];
+
+  const getOrderStatusStep = (status) => {
+    const orderSteps = steps.map(step => step.label);
+    if (!status) return -1;
+    return orderSteps.indexOf(status);
+  };
+
+  const currentStep = getOrderStatusStep(currentStatus);
+  const isFinished = currentStatus === "Selesai";
+
+
+  // Hitung lebar progress line sampai tengah step aktif
+  useEffect(() => {
+    if (stepRefs.current.length && currentStep >= 0) {
+      const first = stepRefs.current[0];
+      const current = stepRefs.current[currentStep];
+      const last = stepRefs.current[stepRefs.current.length - 1];
+
+  
+      if (first && current) {
+        const firstCenter = first.getBoundingClientRect().left + first.offsetWidth / 2;
+        const currentCenter = current.getBoundingClientRect().left + current.offsetWidth / 2;
+        const lastCenter = last.getBoundingClientRect().left + last.offsetWidth / 2;
+        const stepHalfWidth = current.offsetWidth / 2;
+        const lastStepHalfWidth = last.offsetWidth / 1;
+  
+       if (currentStep === stepRefs.current.length - 1) {
+        // Step terakhir: garis dari awal sampai ujung kanan step terakhir
+        setLineWidth((lastCenter + lastStepHalfWidth) - firstCenter);
+      } else {
+        // Belum selesai: garis dari awal sampai current step
+        setLineWidth(currentCenter - firstCenter + stepHalfWidth);
+      }
+      }
+    }
+  }, [currentStep]);
+  
+
+  const getStepIcon = (index) => {
+    switch(index) {
+      case 0: return <FileText className="w-5 h-5" />;
+      case 1: return <Edit className="w-5 h-5" />;
+      case 2: return <RefreshCw className="w-5 h-5" />;
+      case 3: return <FileText className="w-5 h-5" />;
+      case 4: return <Check className="w-5 h-5" />;
+      case 5: return <AlertTriangle className="w-5 h-5" />;
+      case 6: return <CheckCircle className="w-5 h-5" />;
+      default: return <Circle className="w-5 h-5" />;
+    }
+  };
+  return (
+    <div className="mb-6 mt-4">
+      <div className="flex flex-col items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Tracking Status Order</h2>
+        <div className="w-16 h-1 bg-blue-500 mt-2 rounded-full"></div>
+      </div>
+      <div className="relative mb-10">
+        
+
+        {/* Titik awal */}
+        <div className="absolute top-5 left-0 w-5 h-5 bg-blue-600 rounded-full z-10 transform -translate-x-1/2 -translate-y-1/3"></div>
+
+        {/* Garis abu-abu background */}
+        <div className="absolute top-5 left-0 right-0 h-1.5 bg-gray-200 z-0 rounded-full"></div>
+
+        {/* Garis aktif */}
+        <div 
+          className="absolute top-5 left-0 h-1.5 bg-gradient-to-r from-blue-600 to-blue-400 z-1 rounded-full transition-all duration-500" 
+          style={{ width: `${lineWidth}px` }}
+        ></div>
+
+        {/* Step */}
+        <div className="relative z-10 flex justify-between mt-4">
+          {steps.map((step, index) => {
+            const isCompleted = index < currentStep;
+            const isCurrent = index === currentStep;
+            const isFirst = index === 0;
+            const isLast = index === steps.length - 1;
+
+            let bgColorClass = isCompleted || isCurrent ? "bg-blue-500" : "bg-white";
+            let borderColorClass = isCompleted || isCurrent ? "border-blue-500" : "border-gray-300";
+            let iconColorClass = isCompleted || isCurrent ? "text-white" : "text-gray-400";
+            let textColorClass = isCompleted || isCurrent ? "text-blue-600 font-medium" : "text-gray-400";
+
+            return (
+              <div 
+                key={step.id}
+                ref={el => stepRefs.current[index] = el}
+                className="flex flex-col items-center text-center"
+                style={{ width: `${100 / steps.length}%`, maxWidth: "130px" }}
+              >
+                <div 
+                  className={`flex items-center justify-center rounded-full border-2 ${borderColorClass} ${bgColorClass} shadow-sm transition-all duration-300 ${isFirst ? 'w-12 h-12' : 'w-10 h-10'}`}
+                >
+                  {isCurrent ? (
+                    <Clock className={isFirst ? "w-6 h-6 text-white" : "w-5 h-5 text-white"} />
+                  ) : isCompleted ? (
+                    <div className={iconColorClass}>{getStepIcon(index)}</div>
+                  ) : (
+                    <div className={iconColorClass}>
+                      {isLast ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                    </div>
+                  )}
+                </div>
+                <p className={`mt-2 text-xs ${textColorClass} transition-all duration-300 font-medium`}>
+                  {step.label}
+                </p>
+                <p className="text-xs text-gray-500 mt-1 hidden lg:block transition-all duration-300">
+                  {step.description}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Titik akhir */}
+        <div className={`absolute top-5 right-0 w-5 h-5 ${isFinished ? 'bg-blue-600' : 'bg-gray-300'} rounded-full z-10 transform translate-x-1/2 -translate-y-1/3`}></div>
+
+      </div>
+
+      {/* Info status */}
+      <div className="flex items-center justify-center">
+        <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-100">
+          <p className="text-sm text-center text-blue-700">
+            Status saat ini: <span className="font-semibold">{currentStatus || "Belum ada status"}</span>
+            {tanggalStatusOrder && (
+              <span className="ml-1">pada {formatDate(tanggalStatusOrder)}</span>
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const OrderDetail = () => {
   const { portofolio, id } = useParams();
@@ -205,19 +372,19 @@ const OrderDetail = () => {
     if (!status) return "bg-gray-100 text-gray-800";
     
     switch (status.toLowerCase()) {
-      case "Entry":
+      case "entry":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "Diproses - Lapangan":
+      case "diproses - lapangan":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "Invoice":
+      case "invoice":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "New Order":
+      case "new order":
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
-      case "Selesai":
+      case "selesai":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "Diproses - Sertifikat":
+      case "diproses - sertifikat":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "Closed Order":
+      case "closed order":
          return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
       default:
         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
@@ -300,17 +467,26 @@ const OrderDetail = () => {
         <div className="p-6">
           {/* Order Info Header */}
           {order && (
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-gray-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-2 border-b border-gray-100">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">{order.pelanggan || "No Customer Name"}</h3>
                 <p className="text-gray-600 mt-1">{order.nomorOrder || "No Order Number"}</p>
               </div>
               <div className="mt-3 md:mt-0">
-                <span className={`px-4 py-2 inline-flex items-center text-sm font-medium rounded-full ${getStatusBadge(order.statusOrder)}`}>
+                <span className={`${getStatusBadge(order.statusOrder)}`}>
                   {order.statusOrder || "No Status"}
                 </span>
               </div>
             </div>
+          )}
+
+          {/* Status Tracking - Ditambahkan di bawah Order Info Header */}
+          {order && (
+            <TrackingStatus 
+              currentStatus={order.statusOrder} 
+              tanggalStatusOrder={order.tanggalStatusOrder}
+              formatDate={formatDate}
+            />
           )}
 
           {/* Order Details */}
