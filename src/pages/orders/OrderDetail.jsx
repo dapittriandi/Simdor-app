@@ -27,13 +27,13 @@ const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
 
   // Daftar step order
   const steps = [
-    { id: 0, label: "New Order", description: "Order baru dibuat oleh Adm Ops, Menunggu CS Buka Order" },
-    { id: 1, label: "Entry", description: "Order sudah dibuka oleh CS, Menunggu Adm Ops Input Data Pekerjaan" },
-    { id: 2, label: "Diproses - Lapangan", description: "Sedang dikerjakan di lapangan oleh tim Ops, Menunggu Hasil Pekerjaan di lapangan" },
-    { id: 3, label: "Diproses - Sertifikat", description: "Upload Laporan Hasil Pekerjaan di lapangan oleh Adm Ops, Untuk Close Pekerjaan" },
-    { id: 4, label: "Closed Order", description: "Pekerjaan lapangan sudah ditutup oleh Adm Ops, Menunggu Pembayaran" },
-    { id: 5, label: "Invoice", description: "Pembayaran sudah dilakukan oleh pelanggan, Sertifikat segera di distribusikan oleh Adm Ops atau Adm keuangan" },
-    { id: 6, label: "Selesai", description: "Sertifikat telah didistribusikan oleh Adm Ops atau Adm keuangan, order Selesai" },
+    { id: 0, label: "New Order", description: "Pengisian data pelanggan oleh Adm Ops" },
+    { id: 1, label: "Entry", description: "Pembukaan order oleh Customer Service" },
+    { id: 2, label: "Diproses - Lapangan", description: "Pengisian tanggal pekerjaan oleh Adm Ops (Sedang Proses Pekerjaan dilapangan oleh Tim Ops) " },
+    { id: 3, label: "Diproses - Sertifikat", description: "Pengisian proforma  dan upload sertifikat oleh Adm Ops (Pekerjaan dilapangan selesai)" },
+    { id: 4, label: "Closed Order", description: "Selesai Pengisian tanggal selesai pekerjaan oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
+    { id: 5, label: "Invoice", description: "Pengisian Data Invoice Pekerjaan dan faktur oleh Bag. keuangan (Dokumen invoice siap didistribusikan ke Pelanggan)" },
+    { id: 6, label: "Selesai", description: "Pendistribusian Sertifikat (Sertifikat telah didistribusikan oleh Adm Ops/keuangan)" },
   ];
 
   const getOrderStatusStep = (status) => {
@@ -325,8 +325,8 @@ const OrderDetail = () => {
       icon: <Check className="w-5 h-5 text-blue-500" />,
       fields: [
         { key: "nilaiProforma", label: "Nilai Proforma" },
-        { key: "proformaSerahKeOps", label: "Proforma diserahkan ke Operasional", isDate: true },
-        { key: "proformaSerahKeDukbis", label: "Proforma diserahkan ke Dukbis", isDate: true },
+        { key: "proformaSerahKeOps", label: "Tanggal Proforma diserahkan ke Operasional", isDate: true },
+        { key: "proformaSerahKeDukbis", label: "Tanggal Proforma diserahkan ke Dukbis", isDate: true },
         { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06" },
         { key: "jenisSertifikat", label: "Jenis Sertifikat" },
         { key: "noSertifikatPM06", label: "Nomor SertifikatPM06" },

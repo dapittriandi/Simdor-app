@@ -44,8 +44,8 @@ const checkForIncompleteData = (field) => {
     tanggalOrder: "Tanggal Order",
     tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
     tanggalPengirimanFaktur: "Tanggal Pengiriman Faktur Pajak",
-    proformaSerahKeOps: "Proforma diserahkan ke Operasional",
-    proformaSerahKeDukbis: "Proforma diserahkan ke Dukbis",
+    proformaSerahKeOps: "Tanggal Proforma diserahkan ke Operasional",
+    proformaSerahKeDukbis: "Tanggal Proforma diserahkan ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
     distribusiSertifikatPenerimaTanggal: "Tanggal Diterima Sertifikat",
   };
