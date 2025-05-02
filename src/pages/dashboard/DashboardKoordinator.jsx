@@ -269,7 +269,7 @@ const DashboardKoordinator = () => {
                   <h3 className="text-base font-semibold text-gray-600">Status Order</h3>
                   <TableCellsIcon className="h-6 w-6 text-indigo-500" />
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-1 gap-2">
                   {statusList.map((status) => (
                     <div key={status} className="flex items-center justify-between">
                       <span className={getStatusClass(status)}>{status}</span>
@@ -334,6 +334,9 @@ const DashboardKoordinator = () => {
                 <ChartBarIcon className="h-6 w-6 text-gray-600"/>
                 Tren Order per Bulan
               </h3>
+              <h4 className="text-lg font-regular text-gray-800 flex items-center gap-2" >
+                    Tren order di tampilkan 12 bulan dari orderan terakhir
+                  </h4>
             </div>
             <div className="p-5">
               {isLoading ? (

@@ -180,7 +180,7 @@ const LaporanOrders = () => {
           updatedAt: formatDate(ensureValidDateInput(order.updatedAt)), // Format updatedAt
           // Format currency
           nilaiProforma: formatCurrency(order.nilaiProforma),
-          nilaiInvoice: formatCurrency(order.dokumenSelesaiINV),
+          nilaiInvoice: formatCurrency(order.nilaiInvoice),
           // Format number or return '-'
           tonaseDS: order.tonaseDS ? Number(order.tonaseDS).toLocaleString("id-ID") : "-",
           estimasiTonase: order.estimasiTonase ? Number(order.estimasiTonase).toLocaleString("id-ID") : "-",
@@ -266,10 +266,10 @@ const LaporanOrders = () => {
          // Jika pakai koma sebagai ribuan (id-ID), ganti koma
         exportItem.nilaiProforma = exportItem.nilaiProforma.replace(/[Rp.\s]/g, '').replace(/,/g, '');
       }
-      if (exportItem.dokumenSelesaiINV && typeof exportItem.dokumenSelesaiINV === 'string') {
+      if (exportItem.nilaiInvoice && typeof exportItem.nilaiInvoice === 'string') {
          // Hapus 'Rp ', spasi, dan titik ribuan (jika pakai titik)
          // Jika pakai koma sebagai ribuan (id-ID), ganti koma
-        exportItem.dokumenSelesaiINV = exportItem.dokumenSelesaiINV.replace(/[Rp.\s]/g, '').replace(/,/g, '');
+        exportItem.nilaiInvoice = exportItem.nilaiInvoice.replace(/[Rp.\s]/g, '').replace(/,/g, '');
       }
        if (exportItem.tonaseDS && typeof exportItem.tonaseDS === 'string') {
             exportItem.tonaseDS = exportItem.tonaseDS.replace(/\./g, ''); // Hapus titik ribuan

@@ -148,7 +148,7 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
       getDateCell(order.tanggalPengirimanInvoice),
       getDateCell(order.tanggalPengirimanFaktur),
       { t: 'n', v: formatCurrency(order.nilaiProforma), z: '"Rp"#,##0.00' },
-      { t: 'n', v: formatCurrency(order.dokumenSelesaiINV), z: '"Rp"#,##0.00' },
+      { t: 'n', v: formatCurrency(order.nilaiInvoice), z: '"Rp"#,##0.00' },
       order.nomorInvoice || "-",
       order.fakturPajak || "-",
       formatNamaTanggalGabung(order.distribusiSertifikatPengirim, order.distribusiSertifikatPengirimTanggal),

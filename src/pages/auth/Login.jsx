@@ -16,6 +16,12 @@ const Login = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [mounted, setMounted] = useState(false);
+  
+  // State baru untuk multiple roles
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [userRoles, setUserRoles] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,30 +44,64 @@ const Login = () => {
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data();
-        const { peran } = userData;
+        // Mengecek peran pengguna (bisa multiple)
+        let roles = [];
         
-        localStorage.setItem("user", JSON.stringify(userData));
+        // Iterasi melalui semua dokumen yang cocok dengan email ini
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          // Tambahkan docId ke userData untuk referensi
+          roles.push({
+            id: doc.id,
+            ...userData
+          });
+        });
         
-        if (peran === "customer service") {
-          navigate("/dashboard-cs");
-        } else if (peran === "admin keuangan") {
-          navigate("/dashboard-keuangan");
-        } else if (peran === "admin portofolio") {
-          navigate("/dashboard-portofolio");
-        } else if (peran === "koordinator") {
-          navigate("/dashboard-koordinator");
+        if (roles.length > 1) {
+          // Jika memiliki lebih dari satu peran, tampilkan modal
+          setUserRoles(roles);
+          setShowRoleModal(true);
+          setIsLoading(false);
+        } else if (roles.length === 1) {
+          // Jika hanya memiliki satu peran, lanjutkan login seperti biasa
+          const userData = roles[0];
+          navigateBasedOnRole(userData);
         } else {
-          setError("Peran tidak dikenali.");
+          setError("Data pengguna tidak ditemukan.");
+          setIsLoading(false);
         }
       } else {
         setError("Data pengguna tidak ditemukan di Firestore.");
+        setIsLoading(false);
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("Login gagal. Periksa email dan password.");
-    } finally {
       setIsLoading(false);
     }
+  };
+
+  const navigateBasedOnRole = (userData) => {
+    const { peran } = userData;
+    
+    localStorage.setItem("user", JSON.stringify(userData));
+    
+    if (peran === "customer service") {
+      navigate("/dashboard-cs");
+    } else if (peran === "admin keuangan") {
+      navigate("/dashboard-keuangan");
+    } else if (peran === "admin portofolio") {
+      navigate("/dashboard-portofolio");
+    } else if (peran === "koordinator") {
+      navigate("/dashboard-koordinator");
+    } else {
+      setError("Peran tidak dikenali.");
+    }
+  };
+
+  const handleRoleSelect = (selectedUserData) => {
+    setShowRoleModal(false);
+    navigateBasedOnRole(selectedUserData);
   };
 
   const handleForgotPassword = () => {
@@ -94,6 +134,13 @@ const Login = () => {
       setShowForgotModal(false);
       setError("");
       setResetMessage("");
+    }
+  };
+
+  const handleRoleModalOutsideClick = (e) => {
+    if (e.target.id === "role-modal-backdrop") {
+      // Biarkan user tetap memilih peran, jadi tidak tutup modal
+      // Modal ini harus direspon
     }
   };
 
@@ -242,7 +289,7 @@ const Login = () => {
           {/* Footer with blue accent */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-600">
-              © {new Date().getFullYear()} SUCOFINDO CABANG JAMBI. All rights reserved.
+              © {new Date().getFullYear()} PT. SUCOFINDO CABANG JAMBI. All rights reserved.
             </p>
           </div>
         </div>
@@ -351,8 +398,149 @@ const Login = () => {
           </div>
         </div>
       )}
+
+      {/* Role Selection Modal */}
+      {showRoleModal && (
+        <div 
+          id="role-modal-backdrop"
+          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+          onClick={(e) => {
+            if (e.target.id === "role-modal-backdrop") {
+              setShowRoleModal(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all duration-300 animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Pilih Portofolio</h3>
+              <button 
+                onClick={() => setShowRoleModal(false)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors p-1 rounded-full hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-5">
+              <p className="text-gray-600 text-base">
+                Anda memiliki akses ke beberapa portofolio. Silakan pilih salah satu untuk melanjutkan:
+              </p>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1 mb-5">
+              {userRoles.map((role, index) => {
+                // Menentukan ikon dan warna berdasarkan peran
+                let icon, bgColor, hoverBgColor, borderColor;
+                
+                switch(role.peran) {
+                  case "customer service":
+                    icon = (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    bgColor = "bg-blue-50";
+                    hoverBgColor = "hover:bg-blue-100";
+                    borderColor = "border-blue-200";
+                    break;
+                  case "admin keuangan":
+                    icon = (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    bgColor = "bg-green-50";
+                    hoverBgColor = "hover:bg-green-100";
+                    borderColor = "border-green-200";
+                    break;
+                  case "admin portofolio":
+                    icon = (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd" />
+                        <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z" />
+                      </svg>
+                    );
+                    bgColor = "bg-purple-50";
+                    hoverBgColor = "hover:bg-purple-100";
+                    borderColor = "border-purple-200";
+                    break;
+                  case "koordinator":
+                    icon = (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                      </svg>
+                    );
+                    bgColor = "bg-yellow-50";
+                    hoverBgColor = "hover:bg-yellow-100";
+                    borderColor = "border-yellow-200";
+                    break;
+                  default:
+                    icon = (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    bgColor = "bg-gray-50";
+                    hoverBgColor = "hover:bg-gray-100";
+                    borderColor = "border-gray-200";
+                }
+                
+                // Tambahkan informasi detail tambahan jika ada
+                let additionalInfo = "";
+                if (role.portofolio) {
+                  additionalInfo = `${role.portofolio}`;
+                } else if (role.bidang) {
+                  additionalInfo = `${role.bidang.toUpperCase()}`;
+                }
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleRoleSelect(role)}
+                    className={`w-full flex items-center p-4 rounded-lg border ${borderColor} ${bgColor} ${hoverBgColor} transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transform hover:scale-[1.01] hover:shadow-md`}
+                  >
+                    <div className="flex-shrink-0 p-2 rounded-full mr-4 text-blue-600 bg-white shadow-sm">
+                      {icon}
+                    </div>
+                    <div className="text-left flex-grow">
+                      <div className="font-semibold text-lg capitalize">{role.peran}</div>
+                      {additionalInfo && (
+                        <div className="text-gray-600 mt-1">{additionalInfo}</div>
+                      )}
+                    </div>
+                    <div className="ml-2">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="px-4 py-2 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Batal
+              </button>
+              <p className="text-sm text-gray-500">
+                Pilih portofolio yang sesuai
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Login;
+                    

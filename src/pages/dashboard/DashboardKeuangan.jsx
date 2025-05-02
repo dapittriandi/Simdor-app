@@ -325,6 +325,9 @@ const DashboardKeuangan = () => {
                 <ChartBarIcon className="h-6 w-6 text-gray-600"/>
                 Tren Order per Bulan
               </h3>
+              <h4 className="text-lg font-regular text-gray-800 flex items-center gap-2" >
+                    Tren order di tampilkan 12 bulan dari orderan terakhir
+                  </h4>
             </div>
             <div className="p-5">
               {isLoading ? (

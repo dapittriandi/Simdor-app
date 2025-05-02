@@ -214,7 +214,7 @@ const getLast12Months = () => {
               {/* Total Orders Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Order</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Order Port. {userData.bidang?.toUpperCase()}</h3>
                   <ClipboardDocumentListIcon className="h-6 w-6 text-blue-500" />
                 </div>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{totalOrders}</p>
@@ -233,7 +233,7 @@ const getLast12Months = () => {
               {/* Pending Orders Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Order Proses</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Order Proses/Order yang belum selesai</h3>
                   <ClockIcon className="h-6 w-6 text-orange-500" />
                 </div>
                 <p className="text-3xl font-bold text-orange-500 mt-1">{pendingOrders}</p>
@@ -243,7 +243,7 @@ const getLast12Months = () => {
               {/* Total Revenue Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Invoice (Fee) Port. ({userData.bidang?.toUpperCase()})</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Invoice (Fee) Port. {userData.bidang?.toUpperCase()}</h3>
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-2xl font-bold text-emerald-500 mt-1">
@@ -252,7 +252,7 @@ const getLast12Months = () => {
               </div>
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Proforma (PAD) Port. ({userData.bidang?.toUpperCase()})</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Proforma (PAD) Port. {userData.bidang?.toUpperCase()}</h3>
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-2xl font-bold text-emerald-500 mt-1">
@@ -311,6 +311,9 @@ const getLast12Months = () => {
                     <ChartBarIcon className="h-6 w-6 text-gray-600"/>
                     Tren Order per Bulan
                   </h3>
+                  <h4 className="text-lg font-regular text-gray-800 flex items-center gap-2" >
+                    Tren order di tampilkan 12 bulan dari orderan terakhir
+                  </h4>
                 </div>
                 <div className="p-5">
                   {orderTrends.length > 0 ? (

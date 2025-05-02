@@ -56,8 +56,6 @@ const DokumenOrder = () => {
     fetchOrders();
   }, []);
 
-
-
   // ✅ Filter berdasarkan portofolio (DILUAR IF)
   useEffect(() => {
     let displayedOrders = [];
@@ -65,14 +63,13 @@ const DokumenOrder = () => {
     if (userPeran === "admin portofolio") {
       displayedOrders = orders.filter(order => order.portofolio === userPortofolio);
     } else if (userPeran === "admin keuangan") {
-      // displayedOrders = orders.map(order => ({
-      //   pelanggan: order.pelanggan,
-      //   nomorOrder: order.nomorOrder,
-      //   fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
-      //   invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
-      // }));
-      // Untuk user selain admin portofolio, tampilkan semua data apa adanya
-    displayedOrders = orders;
+      // Untuk admin keuangan, tampilkan semua orders dengan properti dokumen yang relevan
+      displayedOrders = orders.map(order => ({
+        pelanggan: order.pelanggan,
+        nomorOrder: order.nomorOrder,
+        fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
+        invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
+      }));
     }
   
     setFilteredOrders(displayedOrders);
@@ -81,35 +78,41 @@ const DokumenOrder = () => {
   const handleSearch = () => {
     if (searchQuery.trim() === "") {
       handleReset();
-    } else {
-      let results = orders.filter(order =>
-        order.pelanggan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.nomorOrder?.toLowerCase().includes(searchQuery.toLowerCase())
+      return;
+    } 
+    
+    let results = [];
+    
+    if (userPeran === "admin portofolio") {
+      // Untuk admin portofolio, filter berdasarkan portofolio terlebih dahulu
+      results = orders
+        .filter(order => order.portofolio === userPortofolio)
+        .filter(order =>
+          (order.pelanggan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.nomorOrder?.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+    } else if (userPeran === "admin keuangan") {
+      // Untuk admin keuangan, cari di semua order
+      results = orders.filter(order =>
+        (order.pelanggan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.nomorOrder?.toLowerCase().includes(searchQuery.toLowerCase()))
       );
-  
-      // 🔒 Filter berdasarkan portofolio jika user adalah admin portofolio
-      if (userPeran === "admin portofolio" && userPortofolio) {
-        results = results.filter(order => order.portofolio === userPortofolio);
-      }
-  
-      // 🔒 Jika admin keuangan: mapping ke data tertentu saja
-      if (userPeran === "admin keuangan") {
-        results = results.map(order => ({
-          pelanggan: order.pelanggan,
-          nomorOrder: order.nomorOrder,
-          fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
-          invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
-        }));
-      }
-  
-      setFilteredOrders(results);
+      
+      // Transformasi hasil untuk admin keuangan agar konsisten
+      results = results.map(order => ({
+        pelanggan: order.pelanggan,
+        nomorOrder: order.nomorOrder,
+        fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
+        invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
+      }));
     }
   
+    // console.log('Filtered Orders:', results);
+    setFilteredOrders(results);
     setIsSearching(true);
     setCurrentPage(1);
   };
   
-
   const handleReset = () => {
     setSearchQuery("");  // Kosongkan input pencarian
     setIsSearching(false);
@@ -135,21 +138,9 @@ const DokumenOrder = () => {
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
-  // ✅ Siapkan data untuk ditampilkan di tabel
-const dokumenToRender = paginatedOrders.map((order) => {
-  if (userPeran === "admin keuangan") {
-    return {
-      pelanggan: order.pelanggan,
-      nomorOrder: order.nomorOrder,
-      fakturPajak: order.documents?.fakturPajak || { fileUrl: null, fileName: "Tidak Ada" },
-      invoice: order.documents?.invoice || { fileUrl: null, fileName: "Tidak Ada" },
-    };
-  }
-
-  // Untuk selain admin keuangan (termasuk admin portofolio), tampilkan full order
-  return order;
-});
-
+  
+  // ✅ Siapkan data untuk ditampilkan di tabel - TIDAK PERLU KONVERSI LAGI
+  const dokumenToRender = paginatedOrders;
 
   if (loading) {
     return (
@@ -304,7 +295,7 @@ const dokumenToRender = paginatedOrders.map((order) => {
                       {userPeran === "admin keuangan" && (
                         <>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            {order.fakturPajak?.fileUrl ? (
+                          {order.fakturPajak && order.fakturPajak.fileUrl ? (
                               <a 
                                 href={order.fakturPajak.fileUrl} 
                                 target="_blank" 
@@ -320,7 +311,7 @@ const dokumenToRender = paginatedOrders.map((order) => {
                           </td>
 
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            {order.invoice?.fileUrl ? (
+                            {order.invoice && order.invoice.fileUrl ? (
                               <a 
                                 href={order.invoice.fileUrl} 
                                 target="_blank" 

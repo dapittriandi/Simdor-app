@@ -159,7 +159,7 @@ const ProfilePage = () => {
               <Folder className="w-4 h-4 text-blue-600 mr-3" />
               <div>
               <p className="text-xs text-gray-500">
-                {userData.peran?.toLowerCase() === "admin portofolio" ? "Portofolio" : "Bidang"}
+                {userData.peran?.toLowerCase() === "admin portofolio" ? "Portofolio" : "Jabatan"}
               </p>
               <p className="font-medium text-sm text-gray-800">
                 {userData.bidang || "-"}
