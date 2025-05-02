@@ -180,7 +180,7 @@ const LaporanOrders = () => {
           updatedAt: formatDate(ensureValidDateInput(order.updatedAt)), // Format updatedAt
           // Format currency
           nilaiProforma: formatCurrency(order.nilaiProforma),
-          dokumenSelesaiINV: formatCurrency(order.dokumenSelesaiINV),
+          nilaiInvoice: formatCurrency(order.dokumenSelesaiINV),
           // Format number or return '-'
           tonaseDS: order.tonaseDS ? Number(order.tonaseDS).toLocaleString("id-ID") : "-",
           estimasiTonase: order.estimasiTonase ? Number(order.estimasiTonase).toLocaleString("id-ID") : "-",
@@ -335,7 +335,7 @@ const LaporanOrders = () => {
     { key: "estimasiTonase", label: "Estimasi Kuantitas/Tonase" },
     { key: "tonaseDS", label: "Tonase DS" },
     { key: "nilaiProforma", label: "Nilai Proforma" },
-    { key: "dokumenSelesaiINV", label: "Dokumen Selesai INV" },
+    { key: "nilaiInvoice", label: "Nilai Invoice (Fee)" },
     { key: "nomorInvoice", label: "Nomor Invoice" },
     { key: "fakturPajak", label: "Faktur Pajak" },
     { key: "tanggalPengirimanInvoice", label: "Tanggal Pengiriman Invoice" },

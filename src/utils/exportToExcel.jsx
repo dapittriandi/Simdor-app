@@ -67,7 +67,7 @@ export const exportToExcel = (orders, fileName = "Laporan Orders") => {
     "Tanggal Pengiriman Invoice",
     "Tanggal Pengiriman Faktur Pajak",
     "Nilai Proforma",
-    "Dokumen Selesai-INV",
+    "Nilai Invoice (Fee)",
     "Nomor Invoice",
     "Faktur Pajak",
     "Distribusi Sertifikat (Pengirim - Tanggal)",
