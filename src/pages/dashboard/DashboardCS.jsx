@@ -264,7 +264,7 @@ const DashboardCS = () => {
                      {/* Kartu Order Diproses */}
                      <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                         <div className="flex justify-between items-start mb-2">
-                            <h3 className="text-base font-semibold text-gray-600">Sedang Diproses</h3>
+                            <h3 className="text-base font-semibold text-gray-600">Sedang Proses Lapangan</h3>
                             <ClockIcon className="h-6 w-6 text-orange-500" />
                         </div>
                         <p className="text-3xl font-bold text-orange-500 mt-1">{summary.processingOrders}</p>

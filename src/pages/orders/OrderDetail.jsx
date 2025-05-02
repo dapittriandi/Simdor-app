@@ -266,7 +266,7 @@ const OrderDetail = () => {
         "tanggalPengirimanFaktur",
         "nomorInvoice",
         "fakturPajak",
-        "dokumenSelesaiINV",
+        "nilaiInvoice",
       ],
       all: [
         "distribusiSertifikatPengirim",
@@ -324,10 +324,10 @@ const OrderDetail = () => {
       title: "Informasi Proforma & Sertifikat",
       icon: <Check className="w-5 h-5 text-blue-500" />,
       fields: [
-        { key: "nilaiProforma", label: "Nilai Proforma" },
+        { key: "nilaiProforma", label: "Nilai Proforma (PAD)" },
         { key: "proformaSerahKeOps", label: "Tanggal Proforma diserahkan ke Operasional", isDate: true },
         { key: "proformaSerahKeDukbis", label: "Tanggal Proforma diserahkan ke Dukbis", isDate: true },
-        { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06" },
+        { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06(Port Batu Bara)" },
         { key: "jenisSertifikat", label: "Jenis Sertifikat" },
         { key: "noSertifikatPM06", label: "Nomor SertifikatPM06" },
         { key: "noSertifikat", label: "Nomor Sertifikat" },
@@ -338,9 +338,9 @@ const OrderDetail = () => {
       title: "Informasi Keuangan",
       icon: <RefreshCw className="w-5 h-5 text-blue-500" />,
       fields: [
-        { key: "dokumenSelesaiINV", label: "Dokumen Selesai INV" },
+        { key: "nilaiInvoice", label: "Nilai Invoice (Fee)" },
         { key: "nomorInvoice", label: "Nomor Invoice" },
-        { key: "fakturPajak", label: "Faktur Pajak" },
+        { key: "fakturPajak", label: "Nomor Seri Faktur Pajak" },
         { key: "tanggalPengirimanInvoice", label: "Tanggal Pengiriman Invoice", isDate: true },
         { key: "tanggalPengirimanFaktur", label: "Tanggal Pengiriman Faktur", isDate: true },
       ]
@@ -508,7 +508,7 @@ const OrderDetail = () => {
                     ? `${order[field.key]} pada ${formatDate(order.tanggalStatusOrder)}`
                     : field.isDate
                     ? formatDate(order[field.key]) 
-                    : field.key === "nilaiProforma"  || field.key === "dokumenSelesaiINV"  && order[field.key] 
+                    : field.key === "nilaiProforma"  || field.key === "nilaiInvoice"  && order[field.key] 
                     ? `Rp ${Number(order[field.key]).toLocaleString()}`
                     : order[field.key] || "-"}
                           </p>

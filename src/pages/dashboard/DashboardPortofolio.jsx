@@ -18,7 +18,8 @@ const DashboardPortofolio = () => {
   const [totalOrders, setTotalOrders] = useState(0);
   const [completedOrders, setCompletedOrders] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalRevenue, setTotalRevenue,] = useState(0);
+  const [TotalRevenueProforma, setTotalRevenueProforma] = useState(0);
   const [orderTrends, setOrderTrends] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null); // State for fetch errors
@@ -102,11 +103,13 @@ const getLast12Months = () => {
 
       // Calculate total revenue
       let revenue = 0;
+      let revenueProforma = 0;
       let trends = {};
 
       totalSnapshot.forEach((doc) => {
         const data = doc.data();
-        revenue += Number(data.nilaiProforma) || 0;
+        revenue += Number(data.nilaiInvoice) || 0;
+        revenueProforma += Number(data.nilaiProforma) || 0;
 
         if (data.tanggalOrder?.seconds) {
           const orderDate = new Date(data.tanggalOrder.seconds * 1000);
@@ -117,6 +120,7 @@ const getLast12Months = () => {
       });
 
       setTotalRevenue(revenue);
+      setTotalRevenueProforma(revenueProforma);
 
       // Ambil bulan yang tetap (12 bulan terakhir)
     const months = getLast12Months();
@@ -135,7 +139,7 @@ const getLast12Months = () => {
     //   }
     // });
 
-    setTotalRevenue(revenue);
+    // setTotalRevenue(revenue);
 
     // Siapkan data untuk chart dengan tren per bulan
     const orderTrends = months.map((month) => ({
@@ -239,11 +243,20 @@ const getLast12Months = () => {
               {/* Total Revenue Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Pendapatan</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Invoice (Fee) Port. ({userData.bidang?.toUpperCase()})</h3>
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-2xl font-bold text-emerald-500 mt-1">
                   {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalRevenue)}
+                </p>
+              </div>
+              <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Proforma (PAD) Port. ({userData.bidang?.toUpperCase()})</h3>
+                  <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
+                </div>
+                <p className="text-2xl font-bold text-emerald-500 mt-1">
+                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(TotalRevenueProforma)}
                 </p>
               </div>
             </div>

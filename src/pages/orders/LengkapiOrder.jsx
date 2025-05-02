@@ -105,7 +105,7 @@ const checkForIncompleteData = (field) => {
       ...(portofolio === "batubara" || portofolio === "ksp" ? ["tonaseDS", "keteranganSertifikatPM06", "noSertifikatPM06"] : [])
     ],
     "customer service": ["nomorOrder", "tanggalOrder"],
-    "admin keuangan": ["tanggalStatusOrder", "dokumenSelesaiINV", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak", "invoice"],
+    "admin keuangan": ["tanggalStatusOrder", "nilaiInvoice", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak", "invoice"],
     "all": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"]
   };
 
@@ -121,7 +121,7 @@ const getFieldsToShowByStatus = (status) => {
     case "Diproses - Sertifikat":
       return ["tanggalStatusOrder"];
     case "Closed Order":
-      return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "dokumenSelesaiINV"];
+      return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "nilaiInvoice"];
     case "Invoice":
       return [
         "distribusiSertifikatPengirim",
@@ -299,7 +299,20 @@ const uploadFile = async (fileKey, file) => {
     setFormData((prev) => ({
       ...prev,
       nilaiProformaRaw: rawValue,     // <-- untuk submit ke Firebase
-      nilaiProforma: formatted        // <-- untuk ditampilkan di UI
+      nilaiProforma: formatted,
+      nilaiInvoiceRaw: rawValue,     // <-- untuk submit ke Firebase
+      nilaiInvoice: formatted         // <-- untuk ditampilkan di UI
+    }));
+  };
+  const handleFormattedInvoice = (e) => {
+    const input = e.target.value;
+    const rawValue = input.replace(/\D/g, ""); // hanya angka
+    const formatted = rawValue ? Number(rawValue).toLocaleString("id-ID") : "";
+
+    setFormData((prev) => ({
+      ...prev,
+      nilaiInvoiceRaw: rawValue,     // <-- untuk submit ke Firebase
+      nilaiInvoice: formatted        // <-- untuk ditampilkan di UI
     }));
   };
 
@@ -389,7 +402,7 @@ const uploadFile = async (fileKey, file) => {
       "Entry": ["tanggalPekerjaan", "tonaseDS"],
       "Diproses - Lapangan": [ "jenisSertifikat", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
       "Diproses - Sertifikat": ["tanggalStatusOrder"],
-      "Closed Order": ["nomorInvoice", "fakturPajak", "dokumenSelesaiINV"],
+      "Closed Order": ["nomorInvoice", "fakturPajak", "nilaiInvoice"],
       "Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
     };
   
@@ -506,13 +519,19 @@ const shouldShowField = (fieldName) => {
     }));
   }
 
+  // const statusOrderTime = Timestamp.now();
+  // if
+
     const payload = {
       ...formData,
       statusOrder: nextStatus, // Pastikan statusOrder sudah ada di sini
       tanggalStatusOrder: Timestamp.now(),  
       nilaiProforma: typeof formData.nilaiProforma === "string"
         ? Number(formData.nilaiProforma.replace(/\./g, ""))
-        : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null)
+        : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null),
+      nilaiInvoice: typeof formData.nilaiInvoice === "string"
+        ? Number(formData.nilaiInvoice.replace(/\./g, ""))
+        : (typeof formData.nilaiInvoice === "number" ? formData.nilaiInvoice : null)
     };
   
     setLoading(true);
@@ -720,7 +739,7 @@ const renderFileUpload = (fileKey, displayName) => {
                 <div className="space-y-4">
                   <FiUpload className="h-12 w-12 text-blue-400" />
                   <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
-                  <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
+                  <p className="text-xs text-gray-500 mt-1">PDF atau JPEG. Max 5MB</p>
                 </div>
               </>
             )}
@@ -981,7 +1000,7 @@ const renderFileUpload = (fileKey, displayName) => {
 
                   {shouldShowField('fakturPajak') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Faktur Pajak</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Seri Faktur Pajak</label>
                   <input 
                     type="text" 
                     name="fakturPajak" 
@@ -995,19 +1014,24 @@ const renderFileUpload = (fileKey, displayName) => {
                 </div>
                   )}
 
-                  {shouldShowField('dokumenSelesaiINV') && (
+                  {shouldShowField('nilaiInvoice') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen Selesai INV</label>
-                  <input 
-                    type="number" 
-                    name="dokumenSelesaiINV" 
-                    value={formData.dokumenSelesaiINV || ""} 
-                    onChange={handleChange} 
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                  />
-                  {checkForIncompleteData('dokumenSelesaiINV') && (
-                    <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
-                  )}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Invoice (Fee)</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500">Rp</span>
+                    </div>
+                      <input 
+                        type="text" 
+                        name="nilaiInvoice" 
+                        value={formData.nilaiInvoice || ""} 
+                        onChange={handleFormattedInvoice} 
+                        className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      />
+                      {checkForIncompleteData('nilaiInvoice') && (
+                        <p className="text-red-500 text-sm mt-1">Data belum lengkap</p>
+                      )}
+                  </div>
                 </div>
                 )}
               </>
@@ -1051,9 +1075,9 @@ const renderFileUpload = (fileKey, displayName) => {
 
           {/* Date Input Fields */}
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            {/* <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
               <FiCalendar className="mr-2 text-blue-500" /> Informasi Tanggal
-            </h3>
+            </h3> */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.keys(dateLabels).map((key) =>
@@ -1172,9 +1196,9 @@ const renderFileUpload = (fileKey, displayName) => {
 
           {/* File Uploads Section */}
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            {/* <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
               <FiFile className="mr-2 text-blue-500" /> Dokumen Pendukung
-            </h3>
+            </h3> */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="grid grid-cols-1 gap-4">
                 {/* Si/Spk Document - Admin Portofolio */}

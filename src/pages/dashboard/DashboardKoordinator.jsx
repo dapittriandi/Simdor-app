@@ -26,6 +26,7 @@ const DashboardKoordinator = () => {
   const navigate = useNavigate();
   const [summary, setSummary] = useState({
     totalOrders: 0,
+    totalInvoice: 0,
     totalProforma: 0,
     statusCounts: {},
     orderTrends: [],
@@ -85,6 +86,7 @@ const DashboardKoordinator = () => {
       const snapshot = await getDocs(query(ordersRef));
 
       let totalOrders = 0;
+      let totalInvoice = 0;
       let totalProforma = 0;
 
       const statusCounts = {
@@ -102,6 +104,7 @@ const DashboardKoordinator = () => {
       snapshot.forEach((doc) => {
         const data = doc.data();
         totalOrders++;
+        totalInvoice += Number(data.nilaiInvoice) || 0;
         totalProforma += Number(data.nilaiProforma) || 0;
   
         // Hitung jumlah order berdasarkan status
@@ -125,7 +128,7 @@ const DashboardKoordinator = () => {
           const formattedPortofolio = capitalizeFirstLetter(data.portofolio.trim());
   
           if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
-            revenueByPortofolio[formattedPortofolio] += Number(data.nilaiProforma) || 0;
+            revenueByPortofolio[formattedPortofolio] += Number(data.nilaiInvoice) || 0;
           } else {
             console.warn(`⚠️ Portofolio tidak dikenal: ${formattedPortofolio}`);
           }
@@ -141,6 +144,7 @@ const DashboardKoordinator = () => {
 
       setSummary({
         totalOrders,
+        totalInvoice,
         totalProforma,
         statusCounts,
         orderTrends: orderTrendsArray,
@@ -242,7 +246,16 @@ const DashboardKoordinator = () => {
               {/* Total Proforma Value Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Proforma</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Invoice (Fee)</h3>
+                  <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
+                </div>
+                <p className="text-3xl font-bold text-emerald-500 mt-1">
+                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalInvoice)}
+                </p>
+              </div>
+              <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-base font-semibold text-gray-600">Total Nilai Proforma (PAD)</h3>
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
@@ -276,7 +289,7 @@ const DashboardKoordinator = () => {
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <BuildingLibraryIcon className="h-6 w-6 text-gray-600"/>
-                Pendapatan per Portofolio
+                Pendapatan per Portofolio (Fee)
               </h3>
             </div>
             <div className="p-5">

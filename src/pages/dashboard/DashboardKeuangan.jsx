@@ -51,6 +51,7 @@ const DashboardKeuangan = () => {
     totalOrders: 0,
     inProcessOrders: 0,
     completedOrders: 0,
+    totalInvoice: 0,
     totalProforma: 0,
     revenueByPortofolio: {},
     orderTrends: [],
@@ -93,6 +94,7 @@ const DashboardKeuangan = () => {
       const snapshot = await getDocs(query(ordersRef));
   
       let totalOrders = snapshot.size;
+      let totalInvoice = 0;
       let totalProforma = 0;
       let inProcessOrders = 0;
       let completedOrders = 0;
@@ -107,6 +109,7 @@ const DashboardKeuangan = () => {
         const data = doc.data();
   
         // Hitung total proforma (nilai dari data.nilaiProforma)
+        totalInvoice += isNaN(Number(data.nilaiInvoice)) ? 0 : Number(data.nilaiInvoice);
         totalProforma += isNaN(Number(data.nilaiProforma)) ? 0 : Number(data.nilaiProforma);
   
         // Hitung jumlah order berdasarkan status
@@ -129,7 +132,7 @@ const DashboardKeuangan = () => {
           const formattedPortofolio = formatPortofolio(data.portofolio); // Format portofolio menjadi huruf kapital
           // console.log("Formatted Portofolio:", formattedPortofolio); // Debug log untuk memastikan portofolio diformat dengan benar
           if (revenueByPortofolio.hasOwnProperty(formattedPortofolio)) {
-            revenueByPortofolio[formattedPortofolio] += isNaN(Number(data.nilaiProforma)) ? 0 : Number(data.nilaiProforma);
+            revenueByPortofolio[formattedPortofolio] += isNaN(Number(data.nilaiInvoice)) ? 0 : Number(data.nilaiInvoice);
           } else {
             // Menangani portofolio yang tidak dikenal
             console.warn(`⚠️ Portofolio tidak dikenal: ${formattedPortofolio}`);
@@ -145,6 +148,7 @@ const DashboardKeuangan = () => {
   
       setSummary({
         totalOrders,
+        totalInvoice,
         totalProforma,
         inProcessOrders,
         completedOrders,
@@ -230,7 +234,7 @@ const DashboardKeuangan = () => {
               {/* In Process Orders Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Menunggu Invoice</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Proses Invoice dari Order yang Sudah di Close</h3>
                   <ClockIcon className="h-6 w-6 text-orange-500" />
                 </div>
                 <p className="text-3xl font-bold text-orange-500 mt-1">{summary.inProcessOrders}</p>
@@ -250,11 +254,21 @@ const DashboardKeuangan = () => {
               {/* Total Proforma Value Card */}
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-semibold text-gray-600">Total Proforma</h3>
+                  <h3 className="text-base font-semibold text-gray-600">Total Proforma (PAD)</h3>
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
                   {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalProforma)}
+                </p>
+              </div>
+              {/* Total Proforma Value Card */}
+              <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-base font-semibold text-gray-600">Total Invoice (Fee)</h3>
+                  <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
+                </div>
+                <p className="text-3xl font-bold text-emerald-500 mt-1">
+                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalInvoice)}
                 </p>
               </div>
             </>

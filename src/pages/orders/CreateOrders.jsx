@@ -241,7 +241,7 @@ const CreateOrder = () => {
         proformaSerahKeOps: null,
         proformaSerahKeDukbis: null,
         nilaiProforma: 0,
-        dokumenSelesaiINV: 0,
+        nilaiInvoice: 0,
         nomorInvoice: "",
         fakturPajak: "",
         tanggalPengirimanInvoice: null,
@@ -523,7 +523,7 @@ const CreateOrder = () => {
                           <Upload className="h-12 w-12 text-blue-400" />
                           <div>
                             <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
-                            <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
+                            <p className="text-xs text-gray-500 mt-1">PDF atau JPEG. Max 5MB</p>
                           </div>
                         </div>
                       )}

@@ -76,7 +76,7 @@ const EditOrder = () => {
     noSertifikatPM06: "Nomor Sertifikat PM06",
     nomorOrder: "Nomor Order",
     tanggalOrder: "Tanggal Order",
-    dokumenSelesaiINV: "Dokumen Selesai INV",
+    nilaiInvoice: "Nilai Invoice (Fee)",
     tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
     tanggalPengirimanFaktur: "Tanggal Pengiriman Faktur",
     nomorInvoice: "Nomor Invoice",
@@ -97,7 +97,7 @@ const EditOrder = () => {
       ...(portofolio === "batubara" || portofolio === "ksp" ? ["tonaseDS", "keteranganSertifikatPM06", "noSertifikatPM06"] : [])
     ],
     "customer service": ["pelanggan", "nomorOrder", "tanggalOrder"],
-    "admin keuangan": ["pelanggan", "dokumenSelesaiINV", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak"],
+    "admin keuangan": ["pelanggan", "nilaiInvoice", "tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "fakturPajak"],
     "all": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"]
   };
 
@@ -564,7 +564,7 @@ const uploadFile = async (fileKey, file) => {
                   <div className="space-y-4">
                     <FiUpload className="h-12 w-12 text-blue-400" />
                     <p className="text-sm font-medium text-blue-600">Klik untuk unggah file</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF atau JPG. Max 5MB</p>
+                    <p className="text-xs text-gray-500 mt-1">PDF atau JPEG/PNG. Max 5MB</p>
                 </div>
                 </>
               )}
@@ -790,7 +790,7 @@ const uploadFile = async (fileKey, file) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Faktur Pajak</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Seri Faktur Pajak</label>
                   <input 
                     type="text" 
                     name="fakturPajak" 
@@ -801,11 +801,11 @@ const uploadFile = async (fileKey, file) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dokumen Selesai INV</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Invoice</label>
                   <input 
                     type="number" 
-                    name="dokumenSelesaiINV" 
-                    value={formData.dokumenSelesaiINV || ""} 
+                    name="nilaiInvoice" 
+                    value={formData.nilaiInvoice || ""} 
                     onChange={handleChange} 
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
