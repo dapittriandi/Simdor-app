@@ -163,7 +163,6 @@ const OrdersPage = () => {
         "proformaSerahKeOps",
         "proformaSerahKeDukbis",
         "jenisSertifikat",
-        "keteranganSertifikatPM06",
         "noSiSpk",
         "jenisPekerjaan",
         "namaTongkang",
