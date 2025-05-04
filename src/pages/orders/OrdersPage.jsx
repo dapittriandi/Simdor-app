@@ -388,7 +388,7 @@ const OrdersPage = () => {
                   <DocumentTextIcon className="h-8 w-8 text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-700">Tidak ada data order</h3>
-                <p className="text-gray-500 mt-1">Tidak ada order yang sesuai dengan filter yang dipilih</p>
+                {/* <p className="text-gray-500 mt-1">Tidak ada order yang sesuai dengan filter yang dipilih</p> */}
               </div>
             )}
 

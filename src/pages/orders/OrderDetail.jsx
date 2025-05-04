@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getOrderById, deleteOrder } from "../../services/orderServices";
+import NavigationInstruction from "../../utils/NavigationInstruction"
 import { Timestamp } from "firebase/firestore";
 import { 
   Edit, 
@@ -486,6 +487,13 @@ const OrderDetail = () => {
               currentStatus={order.statusOrder} 
               tanggalStatusOrder={order.tanggalStatusOrder}
               formatDate={formatDate}
+            />
+          )}
+
+          {order && (
+            <NavigationInstruction
+              currentStatus={order.statusOrder}
+              userPeran={userPeran}
             />
           )}
 
