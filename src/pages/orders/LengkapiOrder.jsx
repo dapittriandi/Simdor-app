@@ -117,9 +117,9 @@ const getFieldsToShowByStatus = (status) => {
     case "Entry":
       return ["tanggalPekerjaan", "tonaseDS"];
     case "Diproses - Lapangan":
-      return ["keteranganSertifikatPM06", "jenisSertifikat", "noSertifikatPM06", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"];
+      return ["keteranganSertifikatPM06", "jenisSertifikat", "noSertifikatPM06", ];
     case "Diproses - Sertifikat":
-      return ["tanggalStatusOrder"];
+      return ["tanggalStatusOrder", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"];
     case "Closed Order":
       return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "nilaiInvoice"];
     case "Invoice":
@@ -400,8 +400,8 @@ const uploadFile = async (fileKey, file) => {
       "": ["pelanggan", "noSiSpk", "jenisPekerjaan", "namaTongkang", "lokasiPekerjaan", "estimasiTonase"],
       "New Order": ["nomorOrder", "tanggalOrder"],
       "Entry": ["tanggalPekerjaan", "tonaseDS"],
-      "Diproses - Lapangan": [ "jenisSertifikat", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
-      "Diproses - Sertifikat": ["tanggalStatusOrder"],
+      "Diproses - Lapangan": [ "jenisSertifikat", ],
+      "Diproses - Sertifikat": ["tanggalStatusOrder", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
       "Closed Order": ["nomorInvoice", "fakturPajak", "nilaiInvoice"],
       "Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
     };

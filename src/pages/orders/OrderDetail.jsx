@@ -31,8 +31,8 @@ const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
     { id: 0, label: "New Order", description: "Pengisian data pelanggan oleh Adm Ops" },
     { id: 1, label: "Entry", description: "Pembukaan order oleh Customer Service" },
     { id: 2, label: "Diproses - Lapangan", description: "Pengisian tanggal pekerjaan oleh Adm Ops (Sedang Proses Pekerjaan dilapangan oleh Tim Ops) " },
-    { id: 3, label: "Diproses - Sertifikat", description: "Pengisian proforma  dan upload sertifikat oleh Adm Ops (Pekerjaan dilapangan selesai)" },
-    { id: 4, label: "Closed Order", description: "Pengisian tanggal selesai pekerjaan oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
+    { id: 3, label: "Diproses - Sertifikat", description: "Pengisian upload sertifikat oleh Adm Ops (Pekerjaan dilapangan selesai)" },
+    { id: 4, label: "Closed Order", description: "Pengisian proforma dan tanggal selesai pekerjaan oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
     { id: 5, label: "Invoice", description: "Pengisian Data Invoice Pekerjaan dan faktur oleh Bag. keuangan (Dokumen invoice siap didistribusikan ke Pelanggan)" },
     { id: 6, label: "Selesai", description: "Pendistribusian Sertifikat (Sertifikat telah didistribusikan oleh Adm Ops/keuangan)" },
   ];

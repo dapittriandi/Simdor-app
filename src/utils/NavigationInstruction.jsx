@@ -37,7 +37,7 @@ import {
         } 
         else if (currentStatus === "Diproses - Lapangan") {
           return {
-            message: "Pekerjaan sedang diproses di lapangan. Jika sudah selesai, silahkan lengkapi data proforma dan sertifikat dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
+            message: "Pekerjaan sedang diproses di lapangan. Jika sudah selesai, silahkan lengkapi data sertifikat dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
             icon: "info",
             color: "blue"
           };
@@ -51,7 +51,7 @@ import {
         }
         else if (currentStatus === "Invoice") {
           return {
-            message: "Invoice telah dibuat oleh bagian keuangan. Anda bisa mendistribusikan sertifikat dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
+            message: "Invoice telah dibuat oleh bagian keuangan. Anda bisa mengisi data distribusi sertifikat dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
             icon: "info",
             color: "blue"
           };
@@ -113,7 +113,7 @@ import {
           };
         case "Closed Order":
           return {
-            message: "Order telah selesai. Menunggu pembuatan invoice oleh Bag. Keuangan.",
+            message: "Order di Closed. Menunggu pembuatan invoice oleh Bag. Keuangan.",
             icon: "clipboardCheck",
             color: "orange"
           };
