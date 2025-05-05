@@ -13,6 +13,7 @@ const EditOrder = () => {
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
   const userData = JSON.parse(localStorage.getItem("user"));
+  const userEmail = userData?.email || "";
   const userPeran = userData?.peran || "";
   const userBidang = userData?.bidang || "";
   const [files, setFiles] = useState({});
@@ -112,8 +113,8 @@ const EditOrder = () => {
     tanggalOrder: "Tanggal Order",
     tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
     tanggalPengirimanFaktur: "Tanggal Kirim Faktur Pajak",
-    proformaSerahKeOps: "Proforma Serah ke Ops",
-    proformaSerahKeDukbis: "Proforma Serah ke Dukbis",
+    proformaSerahKeOps: "Tanggal Proforma Serah ke Ops",
+    proformaSerahKeDukbis: "Tanggal Proforma Serah ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
     distribusiSertifikatPenerimaTanggal: "Tanggal Diterima Sertifikat",
   };
@@ -435,6 +436,7 @@ const uploadFile = async (fileKey, file) => {
       const updatedData = {
         ...existingData,
         ...payload,
+        lastUpdatedBy: userEmail,
         updatedAt: Timestamp.now(),
         documents: {
           ...formData.documents,
@@ -641,7 +643,7 @@ const uploadFile = async (fileKey, file) => {
               />
             </div>
 
-            {/* Status Order - Admin Portofolio */}
+            {/* Status Order - Admin Portofolio
             {userPeran === "admin portofolio" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status Order</label>
@@ -656,9 +658,9 @@ const uploadFile = async (fileKey, file) => {
                   ))}
                 </select>
               </div>
-            )}
+            )} */}
 
-            {/* Tanggal Status Order - Admin Portofolio */}
+            {/* Tanggal Status Order - Admin Portofolio
             {userPeran === "admin portofolio" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -672,7 +674,7 @@ const uploadFile = async (fileKey, file) => {
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                 />
               </div>
-            )}
+            )} */}
 
             {/* Fields for Admin Portofolio */}
             {userPeran === "admin portofolio" && (
