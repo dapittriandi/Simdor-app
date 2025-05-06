@@ -158,7 +158,7 @@ const DashboardKoordinator = () => {
     }
   };
 
-  const statusList = ["New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Invoice", "Selesai"];
+  const statusList = ["New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Penerbitan Proforma", "Invoice", "Selesai"];
   const portofolioList = ["Batubara", "Ksp", "Pik", "Industri", "Hmpm", "Aebt", "Mineral", "Halal", "Laboratorium", "Serco", "Lsi"];
 
   // Skeletons copied from CS dashboard for consistent loading states
