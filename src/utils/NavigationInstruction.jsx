@@ -44,7 +44,14 @@ import {
         }
         else if (currentStatus === "Diproses - Sertifikat") {
           return {
-            message: "Silahkan lengkapi data proforma dan upload sertifikat. Silahkan scroll ke bawah dan Klik tombol 'Lengkapi Data'.",
+            message: "Silahkan Isi Tanggal Closed Order. Silahkan scroll ke bawah dan Klik tombol 'Lengkapi Data'.",
+            icon: "info",
+            color: "blue"
+          };
+        }
+        else if (currentStatus === "Closed Order") {
+          return {
+            message: "Silahkan lengkapi data proforma dengan scroll ke bawah dan Klik tombol 'Lengkapi Data'.",
             icon: "info",
             color: "blue"
           };
@@ -60,14 +67,15 @@ import {
       
       // Case untuk peran admin keuangan
       else if (userPeran === "admin keuangan") {
-        if (currentStatus === "Closed Order") {
+        if (currentStatus === "Penerbitan Proforma") {
           return {
-            message: "Order sudah closed. Silahkan lengkapi data invoice dan faktur pajak dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
+            message: "Proforma Sudah Terbit. Silahkan lengkapi data invoice dan faktur pajak dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
             icon: "info",
             color: "blue"
           };
         }
-        else if (currentStatus === "Invoice") {
+        else 
+        if (currentStatus === "Invoice") {
           return {
             message: "Invoice sudah dibuat. Silahkan lengkapi data distribusi sertifikat dengan scroll ke bawah dan klik tombol 'Lengkapi Data'.",
             icon: "info",
@@ -113,7 +121,13 @@ import {
           };
         case "Closed Order":
           return {
-            message: "Order di Closed. Menunggu pembuatan invoice oleh Bag. Keuangan.",
+            message: "Order di Closed. Menunggu penerbitan proforma oleh Adm Ops.",
+            icon: "clipboardCheck",
+            color: "orange"
+          };
+        case "Penerbitan Proforma":
+          return {
+            message: "Proforma sudah terbit. Menunggu pembuatan invoice oleh Bag. Keuangan.",
             icon: "clipboardCheck",
             color: "orange"
           };

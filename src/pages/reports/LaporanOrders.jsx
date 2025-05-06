@@ -172,6 +172,7 @@ const LaporanOrders = () => {
           tanggalPekerjaan: formatDate(ensureValidDateInput(order.tanggalPekerjaan)),
           proformaSerahKeOps: formatDate(ensureValidDateInput(order.proformaSerahKeOps)),
           proformaSerahKeDukbis: formatDate(ensureValidDateInput(order.proformaSerahKeDukbis)),
+          proformaBySistem: formatDate(ensureValidDateInput(order.proformaBySistem)),
           tanggalPengirimanInvoice: formatDate(ensureValidDateInput(order.tanggalPengirimanInvoice)),
           tanggalPengirimanFaktur: formatDate(ensureValidDateInput(order.tanggalPengirimanFaktur)),
           distribusiSertifikatPengirimTanggal: formatDate(ensureValidDateInput(order.distribusiSertifikatPengirimTanggal)),
@@ -324,6 +325,7 @@ const LaporanOrders = () => {
     { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan" },
     { key: "proformaSerahKeOps", label: "Proforma Serah Ke Ops" },
     { key: "proformaSerahKeDukbis", label: "Proforma Serah Ke Dukbis" },
+    { key: "proformaBySistem", label: "Proforma By Sistem" },
     { key: "jenisPekerjaan", label: "Jenis Pekerjaan" },
     { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
     { key: "noSertifikatPM06", label: "No. Sertifikat PM06" },
@@ -352,7 +354,7 @@ const LaporanOrders = () => {
   const portofolioList = ["BATUBARA", "KSP", "PIK", "INDUSTRI", "HMPM", "AEBT", "MINERAL", "HALAL", "LABORATORIUM", "SERCO", "LSI"];
 
   // Status options for filter dropdown
-  const statusOptions = [ "New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Invoice", "Selesai", ];
+  const statusOptions = [ "New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Penerbitan Proforma", "Invoice", "Selesai", ];
 
   // Get status badge styling
   const getStatusClass = (status) => {

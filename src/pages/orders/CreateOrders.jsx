@@ -240,6 +240,7 @@ const CreateOrder = () => {
         tanggalPekerjaan: null,
         proformaSerahKeOps: null,
         proformaSerahKeDukbis: null,
+        proformaBySistem: null,
         nilaiProforma: 0,
         nilaiInvoice: 0,
         nomorInvoice: "",

@@ -32,9 +32,10 @@ const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
     { id: 1, label: "Entry", description: "Pembukaan order oleh Customer Service" },
     { id: 2, label: "Diproses - Lapangan", description: "Pengisian tanggal pekerjaan oleh Adm Ops (Sedang Proses Pekerjaan dilapangan oleh Tim Ops) " },
     { id: 3, label: "Diproses - Sertifikat", description: "Pengisian upload sertifikat oleh Adm Ops (Pekerjaan dilapangan selesai)" },
-    { id: 4, label: "Closed Order", description: "Pengisian proforma dan tanggal selesai pekerjaan oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
-    { id: 5, label: "Invoice", description: "Pengisian Data Invoice Pekerjaan dan faktur oleh Bag. keuangan (Dokumen invoice siap didistribusikan ke Pelanggan)" },
-    { id: 6, label: "Selesai", description: "Pendistribusian Sertifikat (Sertifikat telah didistribusikan oleh Adm Ops/keuangan)" },
+    { id: 4, label: "Closed Order", description: "Pengisian tanggal selesai pekerjaan oleh Adm Ops (Menunggu Terbit Proforma)" },
+    { id: 5, label: "Penerbitan Proforma", description: "Pengisian proforma dan verifikasi oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
+    { id: 6, label: "Invoice", description: "Pengisian Data Invoice Pekerjaan dan faktur oleh Bag. keuangan (Dokumen invoice siap didistribusikan ke Pelanggan)" },
+    { id: 7, label: "Selesai", description: "Pendistribusian Sertifikat (Sertifikat telah didistribusikan oleh Adm Ops/keuangan)" },
   ];
 
   const getOrderStatusStep = (status) => {
@@ -225,17 +226,28 @@ const OrderDetail = () => {
   }, [portofolio, userPeran, userBidang, id]);
   
   // Fungsi untuk menampilkan tanggal dengan format yang rapi
-  const formatDate = (value) => {
+  const formatDate = (value, includeTime = false) => {
     if (!value) return "-";
-    if (value instanceof Timestamp) {
-      const date = value.toDate();
-      return new Date(date).toLocaleDateString("id-ID", {
-        day: "2-digit", 
-        month: "long", 
-        year: "numeric"
-      });
+  if (value instanceof Timestamp) {
+    const date = value.toDate();
+    
+    // Format tanggal
+    const dateFormat = {
+      day: "2-digit", 
+      month: "long", 
+      year: "numeric"
+    };
+    
+    // Tambahkan format waktu jika diperlukan
+    if (includeTime) {
+      dateFormat.hour = "2-digit";
+      dateFormat.minute = "2-digit";
+      // dateFormat.second = "2-digit";
     }
-    return value; // Jika sudah dalam format string, langsung tampilkan
+    
+    return new Date(date).toLocaleDateString("id-ID", dateFormat);
+  }
+  return value;  // Jika sudah dalam format string, langsung tampilkan
   };
 
   // Fungsi cek apakah user sudah bisa mengedit data sesuai hak aksesnya
@@ -249,6 +261,7 @@ const OrderDetail = () => {
         "tanggalPekerjaan",
         "proformaSerahKeOps",
         "proformaSerahKeDukbis",
+        "proformaBySistem",
         "jenisSertifikat",
         "keteranganSertifikatPM06",
         "noSiSpk",
@@ -328,6 +341,7 @@ const OrderDetail = () => {
         { key: "nilaiProforma", label: "Nilai Proforma (PAD)" },
         { key: "proformaSerahKeOps", label: "Tanggal Proforma diserahkan ke Operasional", isDate: true },
         { key: "proformaSerahKeDukbis", label: "Tanggal Proforma diserahkan ke Dukbis", isDate: true },
+        { key: "proformaBySistem", label: "Tanggal Proforma By Sistem", isDate: true },
         { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06(Port Batu Bara)" },
         { key: "jenisSertifikat", label: "Jenis Sertifikat" },
         { key: "noSertifikatPM06", label: "Nomor SertifikatPM06" },
@@ -362,8 +376,8 @@ const OrderDetail = () => {
       fields: [
         { key: "createdBy", label: "Dibuat Oleh" },
         { key: "lastUpdatedBy", label: "Terakhir Diperbarui Oleh" },
-        { key: "createdAt", label: "Dibuat Pada", isDate: true },
-        { key: "updatedAt", label: "Diperbarui Pada", isDate: true },
+        { key: "createdAt", label: "Dibuat Pada", isDate: true, includeTime: true },
+        { key: "updatedAt", label: "Diperbarui Pada", isDate: true, includeTime: true },
       ]
     }
   ];
@@ -402,7 +416,10 @@ const OrderDetail = () => {
     if ((order?.statusOrder === "Diproses - Sertifikat" ) && userPeran === "admin portofolio") {
       return true;
     }
-    if (( order?.statusOrder === "Closed Order") && userPeran === "admin keuangan") {
+    if (( order?.statusOrder === "Closed Order") && ["admin portofolio"].includes(userPeran)) {
+      return true;
+    }
+    if (( order?.statusOrder === "Penerbitan Proforma") && userPeran === "admin keuangan") {
       return true;
     }
     
@@ -515,7 +532,7 @@ const OrderDetail = () => {
                           {field.key === "statusOrder" && order.tanggalStatusOrder
                     ? `${order[field.key]} pada ${formatDate(order.tanggalStatusOrder)}`
                     : field.isDate
-                    ? formatDate(order[field.key]) 
+                    ? formatDate(order[field.key], field.includeTime) 
                     : field.key === "nilaiProforma"  || field.key === "nilaiInvoice"  && order[field.key] 
                     ? `Rp ${Number(order[field.key]).toLocaleString()}`
                     : order[field.key] || "-"}

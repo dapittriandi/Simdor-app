@@ -336,6 +336,7 @@ const OrdersPage = () => {
                   <option value="Diproses - Lapangan">Diproses - Lapangan</option>
                   <option value="Diproses - Sertifikat">Diproses - Sertifikat</option>
                   <option value="Closed Order">Closed Order</option>
+                  <option value="Penerbitan Proforma">Penerbitan Proforma</option>
                   <option value="Invoice">Invoice</option>
                   <option value="Selesai">Selesai</option>
                   {/* <option value="Archecking">Archecking</option> */}

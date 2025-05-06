@@ -45,6 +45,7 @@ const checkForIncompleteData = (field) => {
     tanggalPengirimanInvoice: "Tanggal Pengiriman Invoice",
     tanggalPengirimanFaktur: "Tanggal Pengiriman Faktur Pajak",
     proformaSerahKeOps: "Tanggal Proforma diserahkan ke Operasional",
+    proformaBySistem: "Tanggal Proforma By Sistem",
     proformaSerahKeDukbis: "Tanggal Proforma diserahkan ke Dukbis",
     distribusiSertifikatPengirimTanggal: "Tanggal Distribusi Sertifikat Pengirim",
     distribusiSertifikatPenerimaTanggal: "Tanggal Diterima Sertifikat",
@@ -80,6 +81,7 @@ const checkForIncompleteData = (field) => {
             ...data,
             tanggalStatusOrder: data.tanggalStatusOrder instanceof Timestamp ? data.tanggalStatusOrder : null,
             tanggalSerahOrderKeCs: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
+            // tanggalProformaBySistem: data.tanggalSerahOrderKeCs instanceof Timestamp ? data.tanggalSerahOrderKeCs : null,
             tanggalPekerjaan: data.tanggalPekerjaan instanceof Timestamp ? data.tanggalPekerjaan : null,
             tanggalPengirimanInvoice: data.tanggalPengirimanInvoice instanceof Timestamp ? data.tanggalPengirimanInvoice : null,
             tanggalPengirimanFaktur: data.tanggalPengirimanFaktur instanceof Timestamp ? data.tanggalPengirimanFaktur : null,
@@ -99,7 +101,7 @@ const checkForIncompleteData = (field) => {
   const editableFields = {
     "admin portofolio": [
      "tanggalSerahOrderKeCs", "tanggalPekerjaan",
-      "proformaSerahKeOps", "proformaSerahKeDukbis", "noSiSpk", "jenisPekerjaan",
+      "proformaSerahKeOps", "proformaSerahKeDukbis", "proformaBySistem", "noSiSpk", "jenisPekerjaan",
       "namaTongkang", "lokasiPekerjaan", "estimasiTonase", "tonaseDS", "nilaiProforma",
       "jenisSertifikat", "tanggalStatusOrder",
       ...(portofolio === "batubara" || portofolio === "ksp" ? ["tonaseDS", "keteranganSertifikatPM06", "noSertifikatPM06"] : [])
@@ -119,8 +121,10 @@ const getFieldsToShowByStatus = (status) => {
     case "Diproses - Lapangan":
       return ["keteranganSertifikatPM06", "jenisSertifikat", "noSertifikatPM06", ];
     case "Diproses - Sertifikat":
-      return ["tanggalStatusOrder", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"];
+      return ["tanggalStatusOrder"];
     case "Closed Order":
+      return ["proformaSerahKeOps", "proformaSerahKeDukbis", "proformaBySistem", "nilaiProforma"];
+    case "Penerbitan Proforma":
       return ["tanggalPengirimanInvoice", "tanggalPengirimanFaktur", "nomorInvoice", "invoice", "fakturPajak", "nilaiInvoice"];
     case "Invoice":
       return [
@@ -300,8 +304,8 @@ const uploadFile = async (fileKey, file) => {
       ...prev,
       nilaiProformaRaw: rawValue,     // <-- untuk submit ke Firebase
       nilaiProforma: formatted,
-      nilaiInvoiceRaw: rawValue,     // <-- untuk submit ke Firebase
-      nilaiInvoice: formatted         // <-- untuk ditampilkan di UI
+      // nilaiInvoiceRaw: rawValue,     // <-- untuk submit ke Firebase
+      // nilaiInvoice: formatted         // <-- untuk ditampilkan di UI
     }));
   };
   const handleFormattedInvoice = (e) => {
@@ -401,8 +405,9 @@ const uploadFile = async (fileKey, file) => {
       "New Order": ["nomorOrder", "tanggalOrder"],
       "Entry": ["tanggalPekerjaan", "tonaseDS"],
       "Diproses - Lapangan": [ "jenisSertifikat", ],
-      "Diproses - Sertifikat": ["tanggalStatusOrder", "proformaSerahKeOps", "proformaSerahKeDukbis", "nilaiProforma"],
-      "Closed Order": ["nomorInvoice", "fakturPajak", "nilaiInvoice"],
+      "Diproses - Sertifikat": ["tanggalStatusOrder"],
+      "Closed Order": ["proformaSerahKeOps", "proformaSerahKeDukbis", "proformaBySistem", "nilaiProforma"],
+      "Penerbitan Proforma": ["nomorInvoice", "fakturPajak", "nilaiInvoice"],
       "Invoice": ["distribusiSertifikatPengirim", "distribusiSertifikatPengirimTanggal", "distribusiSertifikatPenerima", "distribusiSertifikatPenerimaTanggal"],
     };
   
@@ -457,6 +462,7 @@ const uploadFile = async (fileKey, file) => {
       "Diproses - Lapangan",
       "Diproses - Sertifikat",
       "Closed Order",
+      "Penerbitan Proforma",
       "Invoice",
       "Selesai"
     ];
@@ -473,17 +479,17 @@ const uploadFile = async (fileKey, file) => {
   };
 
  // Mendapatkan daftar field yang akan ditampilkan berdasarkan status order
-const fieldsToShowBasedOnStatus = getFieldsToShowByStatus(currentStatusOrder);
+  const fieldsToShowBasedOnStatus = getFieldsToShowByStatus(currentStatusOrder);
 
-// Modifikasi kode untuk menampilkan field berdasarkan status dan peran
-// Tambahkan kondisi pengecekan apakah field perlu ditampilkan berdasarkan status dan peran
-const shouldShowField = (fieldName) => {
-  const hasFieldAccessPermission = fieldsToShow.includes(fieldName);
-  const isFieldRelevantForCurrentStatus = fieldsToShowBasedOnStatus.includes(fieldName);
-  
-  // Field hanya ditampilkan jika memiliki akses dan relevan dengan status saat ini
-  return hasFieldAccessPermission && isFieldRelevantForCurrentStatus;
-};
+  // Modifikasi kode untuk menampilkan field berdasarkan status dan peran
+  // Tambahkan kondisi pengecekan apakah field perlu ditampilkan berdasarkan status dan peran
+  const shouldShowField = (fieldName) => {
+    const hasFieldAccessPermission = fieldsToShow.includes(fieldName);
+    const isFieldRelevantForCurrentStatus = fieldsToShowBasedOnStatus.includes(fieldName);
+    
+    // Field hanya ditampilkan jika memiliki akses dan relevan dengan status saat ini
+    return hasFieldAccessPermission && isFieldRelevantForCurrentStatus;
+  };
 
 
   const handleSubmit = async (e) => {
@@ -519,13 +525,20 @@ const shouldShowField = (fieldName) => {
     }));
   }
 
-  // const statusOrderTime = Timestamp.now();
-  // if
+  // Tentukan tanggalStatusOrder berdasarkan kondisi status
+  let statusDate;
+  if (nextStatus === "Closed Order" && formData.tanggalStatusOrder) {
+    // Jika status adalah "Diproses - Sertifikat" dan ada tanggal yang diisi, gunakan tanggal tersebut
+    statusDate = formData.tanggalStatusOrder;
+  } else {
+    // Untuk status lainnya, gunakan waktu saat ini
+    statusDate = Timestamp.now();
+  }
 
     const payload = {
       ...formData,
       statusOrder: nextStatus, // Pastikan statusOrder sudah ada di sini
-      tanggalStatusOrder: Timestamp.now(),  
+      tanggalStatusOrder: statusDate,  
       nilaiProforma: typeof formData.nilaiProforma === "string"
         ? Number(formData.nilaiProforma.replace(/\./g, ""))
         : (typeof formData.nilaiProforma === "number" ? formData.nilaiProforma : null),

@@ -90,7 +90,7 @@ const DashboardKoordinator = () => {
       let totalProforma = 0;
 
       const statusCounts = {
-        "New Order": 0, Entry: 0, "Diproses - Lapangan": 0, "Diproses - Sertifikat": 0, "Closed Order": 0, Invoice : 0, "Selesai": 0,
+        "New Order": 0, Entry: 0, "Diproses - Lapangan": 0, "Diproses - Sertifikat": 0, "Closed Order": 0, "Penerbitan Proforma": 0, Invoice : 0, "Selesai": 0,
       };
 
       const orderTrends = {};
