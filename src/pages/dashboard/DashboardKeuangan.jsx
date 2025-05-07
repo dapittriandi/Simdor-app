@@ -84,6 +84,20 @@ const DashboardKeuangan = () => {
     return portofolio.trim().toUpperCase(); // Mengubah semua huruf menjadi kapital
   };
 
+  const formatCurrencyShort = (value) => {
+    if (value >= 1_000_000_000_000) {
+      return `${(value / 1_000_000_000_000).toFixed(1)} Triliun`;
+    } else if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(1)} Miliar`;
+    } else if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)} Juta`;
+    } else if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(1)} Ribu`;
+    } else {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+    }
+  };
+  
   
 
   const fetchOrderSummary = async () => {
@@ -258,7 +272,7 @@ const DashboardKeuangan = () => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalProforma)}
+                {formatCurrencyShort(summary.totalProforma)}
                 </p>
               </div>
               {/* Total Proforma Value Card */}
@@ -268,7 +282,7 @@ const DashboardKeuangan = () => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalInvoice)}
+                {formatCurrencyShort(summary.totalInvoice)}
                 </p>
               </div>
             </>
@@ -296,7 +310,7 @@ const DashboardKeuangan = () => {
                 <>
                   <div className="mb-5 px-4 py-3 bg-blue-50 rounded-lg border border-blue-100 inline-block">
                     <p className="text-sm font-medium text-gray-600">Total Nilai Portofolio:</p>
-                    <p className="text-xl font-bold text-emerald-600">
+                    <p className="text-xl font-bold text-emerald-600 text-sm md:text-xl break-words">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalPortfolioValue)}
                     </p>
                   </div>
@@ -307,7 +321,7 @@ const DashboardKeuangan = () => {
                         className="p-4 bg-white rounded-lg border border-gray-200 transition hover:shadow-md"
                       >
                         <p className="text-sm font-medium text-gray-700">{portofolio.toUpperCase()}</p>
-                        <p className="text-lg font-bold text-emerald-600 mt-1">
+                        <p className="text-lg font-bold text-emerald-600 mt-1 text-sm md:text-xl break-words">
                           {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.revenueByPortofolio[portofolio] || 0)}
                         </p>
                       </div>

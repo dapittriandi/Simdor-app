@@ -53,6 +53,20 @@ const getLast12Months = () => {
   return last12Months;
 };
 
+const formatCurrencyShort = (value) => {
+  if (value >= 1_000_000_000_000) {
+    return `${(value / 1_000_000_000_000).toFixed(1)} Triliun`;
+  } else if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(1)} Miliar`;
+  } else if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)} Juta`;
+  } else if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1)} Ribu`;
+  } else {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+  }
+};
+
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (storedUser) setUserData(storedUser);
@@ -247,7 +261,7 @@ const getLast12Months = () => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-2xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalRevenue)}
+                {formatCurrencyShort(totalRevenue)}
                 </p>
               </div>
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">

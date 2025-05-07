@@ -158,6 +158,20 @@ const DashboardKoordinator = () => {
     }
   };
 
+  const formatCurrencyShort = (value) => {
+    if (value >= 1_000_000_000_000) {
+      return `${(value / 1_000_000_000_000).toFixed(1)} Triliun`;
+    } else if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(1)} Miliar`;
+    } else if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)} Juta`;
+    } else if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(1)} Ribu`;
+    } else {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+    }
+  };
+
   const statusList = ["New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Penerbitan Proforma", "Invoice", "Selesai"];
   const portofolioList = ["Batubara", "Ksp", "Pik", "Industri", "Hmpm", "Aebt", "Mineral", "Halal", "Laboratorium", "Serco", "Lsi"];
 
@@ -250,7 +264,7 @@ const DashboardKoordinator = () => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalInvoice)}
+                  {formatCurrencyShort(summary.totalInvoice)}
                 </p>
               </div>
               <div className="bg-white shadow-md rounded-lg p-5 border border-gray-200 transition hover:shadow-lg">
@@ -259,7 +273,7 @@ const DashboardKoordinator = () => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-3xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.totalProforma)}
+                  {formatCurrencyShort(summary.totalProforma)}
                 </p>
               </div>
               
@@ -316,7 +330,7 @@ const DashboardKoordinator = () => {
                         className="p-4 bg-white rounded-lg border border-gray-200 transition hover:shadow-md"
                       >
                         <p className="text-sm font-medium text-gray-700">{portofolio.toUpperCase()}</p>
-                        <p className="text-lg font-bold text-emerald-600 mt-1">
+                        <p className="text-lg font-bold text-emerald-600 mt-1 text-sm md:text-xl break-words">
                           {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(summary.revenueByPortofolio[portofolio] || 0)}
                         </p>
                       </div>
