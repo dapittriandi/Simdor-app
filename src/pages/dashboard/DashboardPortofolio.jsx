@@ -270,7 +270,7 @@ const formatCurrencyShort = (value) => {
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
                 </div>
                 <p className="text-2xl font-bold text-emerald-500 mt-1">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(TotalRevenueProforma)}
+                  {formatCurrencyShort(TotalRevenueProforma)}
                 </p>
               </div>
             </div>
