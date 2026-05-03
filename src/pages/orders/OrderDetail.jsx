@@ -1,169 +1,287 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getOrderById, deleteOrder } from "../../services/orderServices";
-import NavigationInstruction from "../../utils/NavigationInstruction"
+import NavigationInstruction from "../../utils/NavigationInstruction";
 import { Timestamp } from "firebase/firestore";
-import { 
-  Edit, 
-  Trash2, 
-  ArrowLeft, 
-  FileText, 
-  AlertTriangle, 
-  Check, 
-  Clock, 
-  RefreshCw,
-  CheckCircle,
-  Circle,
-  ClipboardEdit,
-  HardHat,
-  FileCheck,
-  ClipboardCheck,
-  Receipt,
-  PackageCheck
+import { useTheme } from "../../components/layout/ThemeContext";
+import {
+  Edit, Trash2, ArrowLeft, FileText, AlertTriangle, Check, Clock,
+  RefreshCw, CheckCircle, Circle, ClipboardEdit, HardHat,
+  FileCheck, ClipboardCheck, Receipt, PackageCheck,
+  BarChart2, Wallet, Send, Award, Info
 } from "lucide-react";
 
-const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
+/* ─────────────────────────────────────────────
+   STYLES — mirroring Sidebar's glass system
+───────────────────────────────────────────── */
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+.od-root { font-family: 'DM Sans', sans-serif; }
+
+/* ── Page backgrounds ── */
+.od-page-dark  { background: #060a16; min-height: 100vh; }
+.od-page-light { background: #f0f5ff; min-height: 100vh; }
+
+/* ── Accent flow ── */
+@keyframes accentFlow { 0%{background-position:0 0}100%{background-position:200% 0} }
+.od-accent-dark  { height:2px; background:linear-gradient(90deg,transparent,#1d4ed8 25%,#60a5fa 50%,#1d4ed8 75%,transparent); background-size:200% 100%; animation:accentFlow 4s linear infinite; }
+.od-accent-light { height:2px; background:linear-gradient(90deg,transparent,#3b82f6 25%,#93c5fd 50%,#3b82f6 75%,transparent); background-size:200% 100%; animation:accentFlow 4s linear infinite; }
+
+/* ── Glass cards ── */
+.od-card-dark {
+  background: rgba(6,10,22,0.82);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(99,148,255,0.12);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.03) inset;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.od-card-light {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(59,130,246,0.14);
+  box-shadow: 0 8px 32px rgba(59,130,246,0.09), 0 1px 0 rgba(255,255,255,0.9) inset;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ── Section card (inner group) ── */
+.od-section-dark {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(99,148,255,0.1);
+  border-radius: 13px;
+  overflow: hidden;
+}
+.od-section-light {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(59,130,246,0.12);
+  border-radius: 13px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.05);
+}
+
+/* ── Section header ── */
+.od-sec-head-dark  { background: rgba(59,130,246,0.07); border-bottom: 1px solid rgba(99,148,255,0.09); padding: 14px 20px; display:flex; align-items:center; gap:10px; }
+.od-sec-head-light { background: rgba(59,130,246,0.05); border-bottom: 1px solid rgba(59,130,246,0.1);  padding: 14px 20px; display:flex; align-items:center; gap:10px; }
+.od-sec-title-dark  { font-size:13px; font-weight:600; color:rgba(147,197,253,0.9); letter-spacing:.03em; }
+.od-sec-title-light { font-size:13px; font-weight:600; color:#1d4ed8; letter-spacing:.03em; }
+
+/* ── Field label / value ── */
+.od-label-dark  { font-size:11px; font-weight:500; color:rgba(99,148,255,0.5); letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
+.od-label-light { font-size:11px; font-weight:500; color:rgba(37,99,235,0.45); letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
+.od-value-dark  { font-size:13.5px; font-weight:500; color:#cbd5f0; }
+.od-value-light { font-size:13.5px; font-weight:500; color:#1e3a5f; }
+
+/* ── Header text ── */
+.od-h1-dark  { font-size:22px; font-weight:700; background:linear-gradient(135deg,#93c5fd,#fff 55%,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.od-h1-light { font-size:22px; font-weight:700; background:linear-gradient(135deg,#1d4ed8,#2563eb 55%,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.od-sub-dark  { font-size:12px; color:rgba(99,148,255,0.45); margin-top:2px; }
+.od-sub-light { font-size:12px; color:rgba(37,99,235,0.45); margin-top:2px; }
+
+/* ── Back button ── */
+.od-back-dark  { display:flex; align-items:center; gap:7px; padding:8px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(99,148,255,0.14); color:rgba(148,163,220,0.8); font-size:13px; font-weight:500; cursor:pointer; transition:all .2s ease; }
+.od-back-dark:hover  { background:rgba(59,130,246,0.1); border-color:rgba(99,148,255,0.28); color:#93c5fd; transform:translateX(-2px); }
+.od-back-light { display:flex; align-items:center; gap:7px; padding:8px 14px; border-radius:10px; background:rgba(255,255,255,0.8); border:1px solid rgba(59,130,246,0.18); color:#4b6ea8; font-size:13px; font-weight:500; cursor:pointer; transition:all .2s ease; }
+.od-back-light:hover { background:rgba(219,234,254,0.9); border-color:rgba(59,130,246,0.3); color:#1d4ed8; transform:translateX(-2px); }
+
+/* ── Customer name / order number ── */
+.od-cust-dark  { font-size:18px; font-weight:700; color:#e2e8f8; }
+.od-cust-light { font-size:18px; font-weight:700; color:#1e3a5f; }
+.od-ordno-dark  { font-size:12px; color:rgba(99,148,255,0.5); margin-top:3px; }
+.od-ordno-light { font-size:12px; color:rgba(37,99,235,0.45); margin-top:3px; }
+
+/* ── Status badges ── */
+.od-badge { display:inline-flex; align-items:center; padding:5px 13px; border-radius:999px; font-size:11.5px; font-weight:600; letter-spacing:.04em; }
+.badge-new-order    { background:rgba(148,163,184,0.12); border:1px solid rgba(148,163,184,0.25); color:#94a3b8; }
+.badge-entry        { background:rgba(34,197,94,0.1);  border:1px solid rgba(34,197,94,0.25);  color:#4ade80; }
+.badge-lapangan     { background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.28); color:#60a5fa; }
+.badge-sertifikat   { background:rgba(168,85,247,0.1);  border:1px solid rgba(168,85,247,0.25); color:#c084fc; }
+.badge-closed       { background:rgba(249,115,22,0.1);  border:1px solid rgba(249,115,22,0.25); color:#fb923c; }
+.badge-proforma     { background:rgba(234,179,8,0.1);   border:1px solid rgba(234,179,8,0.25);  color:#facc15; }
+.badge-invoice      { background:rgba(20,184,166,0.1);  border:1px solid rgba(20,184,166,0.25); color:#2dd4bf; }
+.badge-selesai      { background:rgba(34,197,94,0.14);  border:1px solid rgba(34,197,94,0.3);   color:#4ade80; }
+.badge-default      { background:rgba(239,68,68,0.1);   border:1px solid rgba(239,68,68,0.25);  color:#f87171; }
+
+/* Light mode badge overrides */
+.od-light .badge-new-order    { background:rgba(100,116,139,0.08); border-color:rgba(100,116,139,0.2); color:#64748b; }
+.od-light .badge-entry        { background:rgba(22,163,74,0.08);   border-color:rgba(22,163,74,0.2);   color:#16a34a; }
+.od-light .badge-lapangan     { background:rgba(37,99,235,0.08);   border-color:rgba(37,99,235,0.2);   color:#1d4ed8; }
+.od-light .badge-sertifikat   { background:rgba(147,51,234,0.08);  border-color:rgba(147,51,234,0.2);  color:#7c3aed; }
+.od-light .badge-closed       { background:rgba(234,88,12,0.08);   border-color:rgba(234,88,12,0.2);   color:#c2410c; }
+.od-light .badge-proforma     { background:rgba(161,98,7,0.08);    border-color:rgba(161,98,7,0.2);    color:#a16207; }
+.od-light .badge-invoice      { background:rgba(15,118,110,0.08);  border-color:rgba(15,118,110,0.2);  color:#0f766e; }
+.od-light .badge-selesai      { background:rgba(21,128,61,0.08);   border-color:rgba(21,128,61,0.2);   color:#15803d; }
+.od-light .badge-default      { background:rgba(185,28,28,0.08);   border-color:rgba(185,28,28,0.2);   color:#b91c1c; }
+
+/* ── Dividers ── */
+.od-div-dark  { border-bottom: 1px solid rgba(99,148,255,0.07); }
+.od-div-light { border-bottom: 1px solid rgba(59,130,246,0.1); }
+
+/* ── Current status bar ── */
+.od-status-bar-dark  { background:rgba(37,99,235,0.1); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:10px 16px; }
+.od-status-bar-light { background:rgba(219,234,254,0.7); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:10px 16px; }
+.od-status-txt-dark  { font-size:13px; color:rgba(147,197,253,0.9); }
+.od-status-txt-light { font-size:13px; color:#1d4ed8; }
+
+/* ── Tracking ── */
+.od-track-label-dark  { font-size:11px; color:rgba(147,197,253,0.7); font-weight:500; margin-top:7px; text-align:center; }
+.od-track-label-light { font-size:11px; color:#2563eb; font-weight:500; margin-top:7px; text-align:center; }
+.od-track-desc-dark   { font-size:10px; color:rgba(99,148,255,0.4); text-align:center; margin-top:2px; }
+.od-track-desc-light  { font-size:10px; color:rgba(37,99,235,0.4); text-align:center; margin-top:2px; }
+.od-track-title-dark  { font-size:15px; font-weight:700; color:#93c5fd; }
+.od-track-title-light { font-size:15px; font-weight:700; color:#1d4ed8; }
+
+/* ── Action buttons ── */
+.od-btn-back-dark  { display:inline-flex; align-items:center; gap:7px; padding:10px 20px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(99,148,255,0.15); color:rgba(148,163,220,0.85); font-size:13px; font-weight:500; cursor:pointer; transition:all .22s ease; }
+.od-btn-back-dark:hover  { background:rgba(255,255,255,0.07); color:#bfdbfe; }
+.od-btn-back-light { display:inline-flex; align-items:center; gap:7px; padding:10px 20px; border-radius:11px; background:rgba(255,255,255,0.8); border:1px solid rgba(59,130,246,0.2); color:#4b6ea8; font-size:13px; font-weight:500; cursor:pointer; transition:all .22s ease; }
+.od-btn-back-light:hover { background:#eff6ff; color:#1d4ed8; }
+
+.od-btn-edit { display:inline-flex; align-items:center; gap:7px; padding:10px 22px; border-radius:11px; background:linear-gradient(135deg,#d97706,#f59e0b); border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 18px rgba(245,158,11,0.28); transition:all .22s ease; }
+.od-btn-edit:hover { background:linear-gradient(135deg,#b45309,#d97706); transform:translateY(-1px); box-shadow:0 6px 22px rgba(245,158,11,0.38); }
+
+.od-btn-lengkapi { display:inline-flex; align-items:center; gap:7px; padding:10px 22px; border-radius:11px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 18px rgba(59,130,246,0.3); transition:all .22s ease; }
+.od-btn-lengkapi:hover { background:linear-gradient(135deg,#1e40af,#2563eb); transform:translateY(-1px); box-shadow:0 6px 22px rgba(59,130,246,0.42); }
+
+.od-btn-delete { display:inline-flex; align-items:center; gap:7px; padding:10px 22px; border-radius:11px; background:linear-gradient(135deg,#dc2626,#ef4444); border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 18px rgba(239,68,68,0.28); transition:all .22s ease; }
+.od-btn-delete:hover { background:linear-gradient(135deg,#b91c1c,#dc2626); transform:translateY(-1px); box-shadow:0 6px 22px rgba(239,68,68,0.38); }
+
+/* ── Loading spinner ── */
+@keyframes spinGlow {
+  0%   { transform:rotate(0deg); box-shadow:0 0 0 rgba(59,130,246,0); }
+  50%  { box-shadow:0 0 18px rgba(59,130,246,0.4); }
+  100% { transform:rotate(360deg); box-shadow:0 0 0 rgba(59,130,246,0); }
+}
+.od-spinner { width:48px; height:48px; border-radius:50%; border:3px solid rgba(59,130,246,0.15); border-top:3px solid #3b82f6; animation:spinGlow 1s ease-in-out infinite; }
+
+/* ── Mount animation ── */
+@keyframes odFadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.od-mount { animation: odFadeUp .45s cubic-bezier(0.22,1,0.36,1) both; }
+.od-stagger-1 { animation-delay:.05s; }
+.od-stagger-2 { animation-delay:.1s; }
+.od-stagger-3 { animation-delay:.15s; }
+.od-stagger-4 { animation-delay:.2s; }
+.od-stagger-5 { animation-delay:.25s; }
+.od-stagger-6 { animation-delay:.3s; }
+.od-stagger-7 { animation-delay:.35s; }
+
+/* ── Tracking progress line ── */
+.od-track-rail-dark  { height:3px; background:rgba(99,148,255,0.12); border-radius:99px; }
+.od-track-rail-light { height:3px; background:rgba(59,130,246,0.12); border-radius:99px; }
+.od-track-fill { height:3px; background:linear-gradient(90deg,#1d4ed8,#60a5fa); border-radius:99px; transition:width .6s cubic-bezier(0.22,1,0.36,1); }
+
+/* ── Step circle ── */
+.od-step-done-dark    { background:rgba(37,99,235,0.25); border:2px solid rgba(59,130,246,0.55); color:#60a5fa; }
+.od-step-active-dark  { background:linear-gradient(135deg,#1d4ed8,#3b82f6); border:2px solid rgba(96,165,250,0.6); color:white; box-shadow:0 0 16px rgba(59,130,246,0.5); }
+.od-step-idle-dark    { background:rgba(255,255,255,0.03); border:2px solid rgba(99,148,255,0.15); color:rgba(99,148,255,0.3); }
+.od-step-done-light   { background:rgba(219,234,254,0.8); border:2px solid rgba(59,130,246,0.4); color:#2563eb; }
+.od-step-active-light { background:linear-gradient(135deg,#2563eb,#3b82f6); border:2px solid rgba(37,99,235,0.5); color:white; box-shadow:0 0 14px rgba(59,130,246,0.35); }
+.od-step-idle-light   { background:rgba(241,245,249,0.8); border:2px solid rgba(59,130,246,0.12); color:rgba(59,130,246,0.25); }
+
+/* ── Error card ── */
+.od-error-dark  { background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.2); border-radius:14px; padding:20px 24px; }
+.od-error-light { background:rgba(254,242,242,0.9); border:1px solid rgba(239,68,68,0.22); border-radius:14px; padding:20px 24px; }
+
+/* ── Scrollbar ── */
+.od-root ::-webkit-scrollbar { width:4px; height:4px; }
+.od-root ::-webkit-scrollbar-thumb { background:rgba(59,130,246,0.2); border-radius:10px; }
+`;
+
+/* ─────────────────────────────────────────────
+   TRACKING STATUS COMPONENT
+───────────────────────────────────────────── */
+const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate, isDark }) => {
   const stepRefs = useRef([]);
   const [lineWidth, setLineWidth] = useState(0);
+  const d = isDark;
 
-  // Daftar step order
   const steps = [
-    { id: 0, label: "New Order", description: "Pengisian data pelanggan oleh Adm Ops" },
-    { id: 1, label: "Entry", description: "Pembukaan order oleh Customer Service" },
-    { id: 2, label: "Diproses - Lapangan", description: "Pengisian tanggal pekerjaan oleh Adm Ops (Sedang Proses Pekerjaan dilapangan oleh Tim Ops) " },
-    { id: 3, label: "Diproses - Sertifikat", description: "Pengisian upload sertifikat oleh Adm Ops (Pekerjaan dilapangan selesai)" },
-    { id: 4, label: "Closed Order", description: "Pengisian tanggal selesai pekerjaan oleh Adm Ops (Menunggu Terbit Proforma)" },
-    { id: 5, label: "Penerbitan Proforma", description: "Pengisian proforma dan verifikasi oleh Adm Ops (Menunggu Pembayaran oleh Pelanggan)" },
-    { id: 6, label: "Invoice", description: "Pengisian Data Invoice Pekerjaan dan faktur oleh Bag. keuangan (Dokumen invoice siap didistribusikan ke Pelanggan)" },
-    { id: 7, label: "Selesai", description: "Pendistribusian Sertifikat (Sertifikat telah didistribusikan oleh Adm Ops/keuangan)" },
+    { id: 0, label: "New Order",            desc: "Pengisian data pelanggan",           icon: <FileText className="w-4 h-4" /> },
+    { id: 1, label: "Entry",                desc: "Pembukaan order oleh CS",             icon: <ClipboardEdit className="w-4 h-4" /> },
+    { id: 2, label: "Diproses - Lapangan",  desc: "Pekerjaan di lapangan",              icon: <HardHat className="w-4 h-4" /> },
+    { id: 3, label: "Diproses - Sertifikat",desc: "Upload sertifikat",                  icon: <FileCheck className="w-4 h-4" /> },
+    { id: 4, label: "Closed Order",         desc: "Menunggu terbit proforma",           icon: <ClipboardCheck className="w-4 h-4" /> },
+    { id: 5, label: "Penerbitan Proforma",  desc: "Menunggu pembayaran",                icon: <Receipt className="w-4 h-4" /> },
+    { id: 6, label: "Invoice",              desc: "Invoice siap didistribusikan",       icon: <Wallet className="w-4 h-4" /> },
+    { id: 7, label: "Selesai",              desc: "Sertifikat telah didistribusikan",   icon: <PackageCheck className="w-4 h-4" /> },
   ];
 
-  const getOrderStatusStep = (status) => {
-    const orderSteps = steps.map(step => step.label);
-    if (!status) return -1;
-    return orderSteps.indexOf(status);
-  };
-
-  const currentStep = getOrderStatusStep(currentStatus);
+  const currentStep = steps.findIndex(s => s.label === currentStatus);
   const isFinished = currentStatus === "Selesai";
 
-
-  // Hitung lebar progress line sampai tengah step aktif
   useEffect(() => {
-    if (stepRefs.current.length && currentStep >= 0) {
-      const first = stepRefs.current[0];
-      const current = stepRefs.current[currentStep];
-      const last = stepRefs.current[stepRefs.current.length - 1];
+    if (!stepRefs.current.length || currentStep < 0) return;
+    const first   = stepRefs.current[0];
+    const current = stepRefs.current[currentStep];
+    const last    = stepRefs.current[steps.length - 1];
+    if (!first || !current) return;
 
-  
-      if (first && current) {
-        const firstCenter = first.getBoundingClientRect().left + first.offsetWidth / 2;
-        const currentCenter = current.getBoundingClientRect().left + current.offsetWidth / 2;
-        const lastCenter = last.getBoundingClientRect().left + last.offsetWidth / 2;
-        const stepHalfWidth = current.offsetWidth / 2;
-        const lastStepHalfWidth = last.offsetWidth / 1;
-  
-       if (currentStep === stepRefs.current.length - 1) {
-        // Step terakhir: garis dari awal sampai ujung kanan step terakhir
-        setLineWidth((lastCenter + lastStepHalfWidth) - firstCenter);
-      } else {
-        // Belum selesai: garis dari awal sampai current step
-        setLineWidth(currentCenter - firstCenter + stepHalfWidth);
-      }
-      }
+    const firstCenter   = first.getBoundingClientRect().left   + first.offsetWidth / 2;
+    const currentCenter = current.getBoundingClientRect().left + current.offsetWidth / 2;
+    const lastCenter    = last.getBoundingClientRect().left    + last.offsetWidth  / 2;
+
+    if (currentStep === steps.length - 1) {
+      setLineWidth((lastCenter + last.offsetWidth / 2) - firstCenter);
+    } else {
+      setLineWidth(currentCenter - firstCenter + current.offsetWidth / 2);
     }
   }, [currentStep]);
-  
 
-  const getStepIcon = (index) => {
-    switch(index) {
-      case 0: return <FileText className="w-5 h-5" />;
-      case 1: return <Edit className="w-5 h-5" />;
-      case 2: return <RefreshCw className="w-5 h-5" />;
-      case 3: return <FileText className="w-5 h-5" />;
-      case 4: return <Check className="w-5 h-5" />;
-      case 5: return <AlertTriangle className="w-5 h-5" />;
-      case 6: return <CheckCircle className="w-5 h-5" />;
-      default: return <Circle className="w-5 h-5" />;
-    }
+  const stepCls = (index) => {
+    if (index < currentStep)  return d ? "od-step-done-dark"   : "od-step-done-light";
+    if (index === currentStep) return d ? "od-step-active-dark" : "od-step-active-light";
+    return d ? "od-step-idle-dark" : "od-step-idle-light";
   };
+
   return (
-    <div className="mb-6 mt-4">
-      <div className="flex flex-col items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Tracking Status Order</h2>
-        <div className="w-16 h-1 bg-blue-500 mt-2 rounded-full"></div>
+    <div style={{ marginBottom: 24 }}>
+      {/* Title */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:20 }}>
+        <p className={d ? "od-track-title-dark" : "od-track-title-light"}>Tracking Status Order</p>
+        <div className={d ? "od-accent-dark" : "od-accent-light"} style={{ width:48, marginTop:6 }} />
       </div>
-      <div className="relative mb-10">
-        
 
-        {/* Titik awal */}
-        <div className="absolute top-5 left-0 w-5 h-5 bg-blue-600 rounded-full z-10 transform -translate-x-1/2 -translate-y-1/3"></div>
+      {/* Rail */}
+      <div style={{ position:"relative", marginBottom:8 }}>
+        <div className={d ? "od-track-rail-dark" : "od-track-rail-light"} style={{ position:"absolute", top:19, left:0, right:0 }} />
+        <div className="od-track-fill" style={{ position:"absolute", top:19, left:0, width:`${lineWidth}px` }} />
 
-        {/* Garis abu-abu background */}
-        <div className="absolute top-5 left-0 right-0 h-1.5 bg-gray-200 z-0 rounded-full"></div>
-
-        {/* Garis aktif */}
-        <div 
-          className="absolute top-5 left-0 h-1.5 bg-gradient-to-r from-blue-600 to-blue-400 z-1 rounded-full transition-all duration-500" 
-          style={{ width: `${lineWidth}px` }}
-        ></div>
-
-        {/* Step */}
-        <div className="relative z-10 flex justify-between mt-4">
-          {steps.map((step, index) => {
-            const isCompleted = index < currentStep;
-            const isCurrent = index === currentStep;
-            const isFirst = index === 0;
-            const isLast = index === steps.length - 1;
-
-            let bgColorClass = isCompleted || isCurrent ? "bg-blue-500" : "bg-white";
-            let borderColorClass = isCompleted || isCurrent ? "border-blue-500" : "border-gray-300";
-            let iconColorClass = isCompleted || isCurrent ? "text-white" : "text-gray-400";
-            let textColorClass = isCompleted || isCurrent ? "text-blue-600 font-medium" : "text-gray-400";
-
-            return (
-              <div 
-                key={step.id}
-                ref={el => stepRefs.current[index] = el}
-                className="flex flex-col items-center text-center"
-                style={{ width: `${100 / steps.length}%`, maxWidth: "130px" }}
+        {/* Steps */}
+        <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              ref={el => stepRefs.current[index] = el}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", width:`${100/steps.length}%`, maxWidth:120 }}
+            >
+              <div
+                className={stepCls(index)}
+                style={{ width:40, height:40, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .3s ease" }}
               >
-                <div 
-                  className={`flex items-center justify-center rounded-full border-2 ${borderColorClass} ${bgColorClass} shadow-sm transition-all duration-300 ${isFirst ? 'w-12 h-12' : 'w-10 h-10'}`}
-                >
-                  {isCurrent ? (
-                    <Clock className={isFirst ? "w-6 h-6 text-white" : "w-5 h-5 text-white"} />
-                  ) : isCompleted ? (
-                    <div className={iconColorClass}>{getStepIcon(index)}</div>
-                  ) : (
-                    <div className={iconColorClass}>
-                      {isLast ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
-                    </div>
-                  )}
-                </div>
-                <p className={`mt-2 text-xs ${textColorClass} transition-all duration-300 font-medium`}>
-                  {step.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-1 hidden lg:block transition-all duration-300">
-                  {step.description}
-                </p>
+                {index === currentStep ? <Clock className="w-4 h-4" /> : step.icon}
               </div>
-            );
-          })}
+              <p className={d ? "od-track-label-dark" : "od-track-label-light"} style={{ fontSize:10, marginTop:6, textAlign:"center", lineHeight:1.3 }}>
+                {step.label}
+              </p>
+              <p className={`${d ? "od-track-desc-dark" : "od-track-desc-light"} hidden lg:block`} style={{ fontSize:9, marginTop:2, textAlign:"center", lineHeight:1.3, maxWidth:90 }}>
+                {step.desc}
+              </p>
+            </div>
+          ))}
         </div>
-
-        {/* Titik akhir */}
-        <div className={`absolute top-5 right-0 w-5 h-5 ${isFinished ? 'bg-blue-600' : 'bg-gray-300'} rounded-full z-10 transform translate-x-1/2 -translate-y-1/3`}></div>
-
       </div>
 
-      {/* Info status */}
-      <div className="flex items-center justify-center">
-        <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-100">
-          <p className="text-sm text-center text-blue-700">
-            Status saat ini: <span className="font-semibold">{currentStatus || "Belum ada status"}</span>
+      {/* Current status pill */}
+      <div style={{ display:"flex", justifyContent:"center", marginTop:16 }}>
+        <div className={d ? "od-status-bar-dark" : "od-status-bar-light"}>
+          <p className={d ? "od-status-txt-dark" : "od-status-txt-light"} style={{ fontSize:12.5, textAlign:"center" }}>
+            Status saat ini:{" "}
+            <span style={{ fontWeight:700 }}>{currentStatus || "Belum ada status"}</span>
             {tanggalStatusOrder && (
-              <span className="ml-1">pada {formatDate(tanggalStatusOrder)}</span>
+              <span style={{ opacity:.7 }}> · {formatDate(tanggalStatusOrder)}</span>
             )}
           </p>
         </div>
@@ -172,286 +290,218 @@ const TrackingStatus = ({ currentStatus, tanggalStatusOrder, formatDate }) => {
   );
 };
 
+/* ─────────────────────────────────────────────
+   FIELD ITEM
+───────────────────────────────────────────── */
+const FieldItem = ({ label, value, isDark }) => (
+  <div style={{ padding:"2px 0" }}>
+    <p className={isDark ? "od-label-dark" : "od-label-light"}>{label}</p>
+    <p className={isDark ? "od-value-dark" : "od-value-light"}>{value || "—"}</p>
+  </div>
+);
 
+/* ─────────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────────── */
 const OrderDetail = () => {
   const { portofolio, id } = useParams();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
 
-  // Data user dari localStorage
-  const userData = JSON.parse(localStorage.getItem("user"));
+  const userData  = JSON.parse(localStorage.getItem("user"));
   const userPeran = userData?.peran || "";
   const userBidang = userData?.bidang || "";
 
+  const d = isDark;
+  const T = (dark, light) => d ? dark : light;
+
   useEffect(() => {
-
-    if (!userPeran) {
-      alert("Anda tidak memiliki akses!");
-      navigate("/");
-      return;
-    }
-
-    if (userPeran === "admin portofolio" && userBidang !== portofolio) {
-      alert("Anda tidak memiliki akses!");
-      navigate("/");
-      return;
-    }
+    if (!userPeran) { alert("Anda tidak memiliki akses!"); navigate("/"); return; }
+    if (userPeran === "admin portofolio" && userBidang !== portofolio) { alert("Anda tidak memiliki akses!"); navigate("/"); return; }
     setMounted(true);
+
     const fetchOrder = async () => {
-      setLoading(true);
-      setError(null);
-  
+      setLoading(true); setError(null);
       try {
-        // console.log("Fetching order with ID:", id);
         const data = await getOrderById(id);
-        // console.log("Order Data:", data);
-  
-        if (data) {
-          setOrder(data);
-        } else {
-          setError("Order tidak ditemukan.");
-        }
+        data ? setOrder(data) : setError("Order tidak ditemukan.");
       } catch (err) {
-        console.error("Error fetching order:", err);
-        setError("Terjadi kesalahan saat mengambil data.");
+        console.error(err); setError("Terjadi kesalahan saat mengambil data.");
       }
       setLoading(false);
     };
-  
     fetchOrder();
     return () => setMounted(false);
   }, [portofolio, userPeran, userBidang, id]);
-  
-  // Fungsi untuk menampilkan tanggal dengan format yang rapi
+
   const formatDate = (value, includeTime = false) => {
-    if (!value) return "-";
-  if (value instanceof Timestamp) {
-    const date = value.toDate();
-    
-    // Format tanggal
-    const dateFormat = {
-      day: "2-digit", 
-      month: "long", 
-      year: "numeric"
-    };
-    
-    // Tambahkan format waktu jika diperlukan
-    if (includeTime) {
-      dateFormat.hour = "2-digit";
-      dateFormat.minute = "2-digit";
-      // dateFormat.second = "2-digit";
+    if (!value) return "—";
+    if (value instanceof Timestamp) {
+      const opts = { day:"2-digit", month:"long", year:"numeric", ...(includeTime ? { hour:"2-digit", minute:"2-digit" } : {}) };
+      return value.toDate().toLocaleDateString("id-ID", opts);
     }
-    
-    return new Date(date).toLocaleDateString("id-ID", dateFormat);
-  }
-  return value;  // Jika sudah dalam format string, langsung tampilkan
+    return value;
   };
 
-  // Fungsi cek apakah user sudah bisa mengedit data sesuai hak aksesnya
   const isEditableByRole = (order, role) => {
-    const requiredFields = {
-      "admin portofolio": [
-        "pelanggan",
-        "statusOrder",
-        "tanggalStatusOrder",
-        "tanggalSerahOrderKeCs",
-        "tanggalPekerjaan",
-        "proformaSerahKeOps",
-        "proformaSerahKeDukbis",
-        "proformaBySistem",
-        "jenisSertifikat",
-        "keteranganSertifikatPM06",
-        "noSiSpk",
-        "jenisPekerjaan",
-        "namaTongkang",
-        "lokasiPekerjaan",
-        "estimasiTonase",
-        "tonaseDS",
-        "nilaiProforma",
-      ],
+    const rf = {
+      "admin portofolio": ["pelanggan","statusOrder","tanggalStatusOrder","tanggalSerahOrderKeCs","tanggalPekerjaan","proformaSerahKeOps","proformaSerahKeDukbis","proformaBySistem","jenisSertifikat","keteranganSertifikatPM06","noSiSpk","jenisPekerjaan","namaTongkang","lokasiPekerjaan","estimasiTonase","tonaseDS","nilaiProforma"],
       "koordinator": [],
-      "customer service": ["nomorOrder", "tanggalOrder"],
-      "admin keuangan": [
-        "tanggalStatusOrder",
-        "tanggalPengirimanInvoice",
-        "tanggalPengirimanFaktur",
-        "nomorInvoice",
-        "fakturPajak",
-        "nilaiInvoice",
-      ],
-      all: [
-        "distribusiSertifikatPengirim",
-        "distribusiSertifikatPengirimTanggal",
-        "distribusiSertifikatPenerima",
-        "distribusiSertifikatPenerimaTanggal",
-      ],
+      "customer service": ["nomorOrder","tanggalOrder"],
+      "admin keuangan": ["tanggalStatusOrder","tanggalPengirimanInvoice","tanggalPengirimanFaktur","nomorInvoice","fakturPajak","nilaiInvoice"],
+      all: ["distribusiSertifikatPengirim","distribusiSertifikatPengirimTanggal","distribusiSertifikatPenerima","distribusiSertifikatPenerimaTanggal"],
     };
-
-    const userRequiredFields = [...requiredFields[role], ...requiredFields.all];
-    return userRequiredFields.every((field) => order[field] !== "" && order[field] !== null);
+    return [...(rf[role] || []), ...rf.all].every(f => order[f] !== "" && order[f] !== null);
   };
 
-  // Fungsi hapus order (Hanya Admin Portofolio)
   const handleDelete = async () => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus order ini?")) return;
-    try {
-      await deleteOrder(id);
-      alert("Order berhasil dihapus!");
-      navigate(`/orders/${portofolio}`);
-    } catch (err) {
-      console.error("Gagal menghapus order:", err);
-      alert("Gagal menghapus order.");
-    }
-  };
-
-  // Field groups for better organization
-  const fieldGroups = [
-    {
-      title: "Informasi Umum",
-      icon: <FileText className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "pelanggan", label: "Nama Pelanggan" },
-        { key: "statusOrder", label: "Status Order" },
-        { key: "nomorOrder", label: "Nomor Order" },
-        { key: "tanggalOrder", label: "Tanggal Order", isDate: true },
-        // { key: "tanggalStatusOrder", label: "Tanggal Status Order", isDate: true },
-        { key: "tanggalSerahOrderKeCs", label: "Tanggal Penyerahan Order Ke CS", isDate: true },
-      ]
-    },
-    {
-      title: "Detail Pekerjaan",
-      icon: <Clock className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "noSiSpk", label: "Nomor SI/SPK" },
-        { key: "jenisPekerjaan", label: "Jenis Pekerjaan" },
-        { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
-        { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan", isDate: true },
-        { key: "namaTongkang", label: "Nama Tongkang" },
-        { key: "estimasiTonase", label: "Estimasi Kuantitas" },
-        { key: "tonaseDS", label: "Tonase DS" },
-      ]
-    },
-    {
-      title: "Informasi Proforma & Sertifikat",
-      icon: <Check className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "nilaiProforma", label: "Nilai Proforma (PAD)" },
-        { key: "proformaSerahKeOps", label: "Tanggal Proforma diserahkan ke Operasional", isDate: true },
-        { key: "proformaSerahKeDukbis", label: "Tanggal Proforma diserahkan ke Dukbis", isDate: true },
-        { key: "proformaBySistem", label: "Tanggal Proforma By Sistem", isDate: true },
-        { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06(Port Batu Bara)" },
-        { key: "jenisSertifikat", label: "Jenis Sertifikat" },
-        { key: "noSertifikatPM06", label: "Nomor SertifikatPM06" },
-        { key: "noSertifikat", label: "Nomor Sertifikat" },
-        
-      ]
-    },
-    {
-      title: "Informasi Keuangan",
-      icon: <RefreshCw className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "nilaiInvoice", label: "Nilai Invoice (Fee)" },
-        { key: "nomorInvoice", label: "Nomor Invoice" },
-        { key: "fakturPajak", label: "Nomor Seri Faktur Pajak" },
-        { key: "tanggalPengirimanInvoice", label: "Tanggal Pengiriman Invoice", isDate: true },
-        { key: "tanggalPengirimanFaktur", label: "Tanggal Pengiriman Faktur", isDate: true },
-      ]
-    },
-    {
-      title: "Informasi Distribusi Sertifikat",
-      icon: <RefreshCw className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "distribusiSertifikatPengirim", label: "Nama yang Mendistribusikan Sertifikat" },
-        { key: "distribusiSertifikatPengirimTanggal", label: "Tanggal Distribusi Pengiriman Sertifikat", isDate: true },
-        { key: "distribusiSertifikatPenerima", label: "Nama Penerima Sertifikat" },
-        { key: "distribusiSertifikatPenerimaTanggal", label: "Tanggal Diterima Sertifikat", isDate: true },
-      ]
-    },
-    {
-      title: "Meta Informasi",
-      icon: <RefreshCw className="w-5 h-5 text-blue-500" />,
-      fields: [
-        { key: "createdBy", label: "Dibuat Oleh" },
-        { key: "lastUpdatedBy", label: "Terakhir Diperbarui Oleh" },
-        { key: "createdAt", label: "Dibuat Pada", isDate: true, includeTime: true },
-        { key: "updatedAt", label: "Diperbarui Pada", isDate: true, includeTime: true },
-      ]
-    }
-  ];
-
-  // Function to get status badge color
-  const getStatusBadge = (status) => {
-    if (!status) return "bg-gray-100 text-gray-800";
-    
-    switch (status.toLowerCase()) {
-      case "entry":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "diproses - lapangan":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "invoice":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "new order":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
-      case "selesai":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "diproses - sertifikat":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "closed order":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
-      default:
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
-    }
+    try { await deleteOrder(id); alert("Order berhasil dihapus!"); navigate(`/orders/${portofolio}`); }
+    catch (err) { console.error(err); alert("Gagal menghapus order."); }
   };
 
   const showLengkapiButton = () => {
-    if (order?.statusOrder === "New Order" && userPeran === "customer service") {
-      return true;
-    }
-    if ((order?.statusOrder === "Entry" || order?.statusOrder === "Diproses - Lapangan") && userPeran === "admin portofolio") {
-      return true;
-    }
-    if ((order?.statusOrder === "Diproses - Sertifikat" ) && userPeran === "admin portofolio") {
-      return true;
-    }
-    if (( order?.statusOrder === "Closed Order") && ["admin portofolio"].includes(userPeran)) {
-      return true;
-    }
-    if (( order?.statusOrder === "Penerbitan Proforma") && userPeran === "admin keuangan") {
-      return true;
-    }
-    
-    if ( order?.statusOrder === "Invoice" && ["admin portofolio", "admin keuangan"].includes(userPeran)) {
-      return true;
-    }
+    if (!order) return false;
+    if (order.statusOrder === "New Order" && userPeran === "customer service") return true;
+    if (["Entry","Diproses - Lapangan","Diproses - Sertifikat","Closed Order"].includes(order.statusOrder) && userPeran === "admin portofolio") return true;
+    if (order.statusOrder === "Penerbitan Proforma" && userPeran === "admin keuangan") return true;
+    if (order.statusOrder === "Invoice" && ["admin portofolio","admin keuangan"].includes(userPeran)) return true;
     return false;
   };
 
+  const getStatusBadgeCls = (status) => {
+    if (!status) return "od-badge badge-default";
+    switch (status.toLowerCase()) {
+      case "new order":           return "od-badge badge-new-order";
+      case "entry":               return "od-badge badge-entry";
+      case "diproses - lapangan": return "od-badge badge-lapangan";
+      case "diproses - sertifikat": return "od-badge badge-sertifikat";
+      case "closed order":        return "od-badge badge-closed";
+      case "penerbitan proforma": return "od-badge badge-proforma";
+      case "invoice":             return "od-badge badge-invoice";
+      case "selesai":             return "od-badge badge-selesai";
+      default:                    return "od-badge badge-default";
+    }
+  };
+
+  const fieldGroups = [
+    {
+      title: "Informasi Umum", stagger: "od-stagger-2",
+      icon: <FileText style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"pelanggan",              label:"Nama Pelanggan" },
+        { key:"statusOrder",            label:"Status Order",                special:"status" },
+        { key:"nomorOrder",             label:"Nomor Order" },
+        { key:"tanggalOrder",           label:"Tanggal Order",               isDate:true },
+        { key:"tanggalSerahOrderKeCs",  label:"Tanggal Penyerahan ke CS",    isDate:true },
+      ]
+    },
+    {
+      title: "Detail Pekerjaan", stagger: "od-stagger-3",
+      icon: <HardHat style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"noSiSpk",          label:"Nomor SI/SPK" },
+        { key:"jenisPekerjaan",   label:"Jenis Pekerjaan" },
+        { key:"lokasiPekerjaan",  label:"Lokasi Pekerjaan" },
+        { key:"tanggalPekerjaan", label:"Tanggal Pekerjaan", isDate:true },
+        { key:"namaTongkang",     label:"Nama Tongkang" },
+        { key:"estimasiTonase",   label:"Estimasi Kuantitas" },
+        { key:"tonaseDS",         label:"Tonase DS" },
+      ]
+    },
+    {
+      title: "Proforma & Sertifikat", stagger: "od-stagger-4",
+      icon: <Award style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"nilaiProforma",              label:"Nilai Proforma (PAD)",               special:"currency" },
+        { key:"proformaSerahKeOps",         label:"Proforma → Operasional",            isDate:true },
+        { key:"proformaSerahKeDukbis",      label:"Proforma → Dukbis",                 isDate:true },
+        { key:"proformaBySistem",           label:"Proforma by Sistem",                isDate:true },
+        { key:"keteranganSertifikatPM06",   label:"Keterangan Sertifikat PM06" },
+        { key:"jenisSertifikat",            label:"Jenis Sertifikat" },
+        { key:"noSertifikatPM06",           label:"No. Sertifikat PM06" },
+        { key:"noSertifikat",               label:"No. Sertifikat" },
+      ]
+    },
+    {
+      title: "Informasi Keuangan", stagger: "od-stagger-5",
+      icon: <Wallet style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"nilaiInvoice",               label:"Nilai Invoice (Fee)",    special:"currency" },
+        { key:"nomorInvoice",               label:"Nomor Invoice" },
+        { key:"fakturPajak",                label:"No. Seri Faktur Pajak" },
+        { key:"tanggalPengirimanInvoice",   label:"Tgl. Kirim Invoice",    isDate:true },
+        { key:"tanggalPengirimanFaktur",    label:"Tgl. Kirim Faktur",     isDate:true },
+      ]
+    },
+    {
+      title: "Distribusi Sertifikat", stagger: "od-stagger-6",
+      icon: <Send style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"distribusiSertifikatPengirim",         label:"Pengirim Sertifikat" },
+        { key:"distribusiSertifikatPengirimTanggal",  label:"Tgl. Pengiriman",      isDate:true },
+        { key:"distribusiSertifikatPenerima",         label:"Penerima Sertifikat" },
+        { key:"distribusiSertifikatPenerimaTanggal",  label:"Tgl. Diterima",        isDate:true },
+      ]
+    },
+    {
+      title: "Meta Informasi", stagger: "od-stagger-7",
+      icon: <Info style={{ width:15, height:15, color: d ? "#60a5fa" : "#2563eb" }} />,
+      fields: [
+        { key:"createdBy",    label:"Dibuat Oleh" },
+        { key:"lastUpdatedBy",label:"Terakhir Diperbarui Oleh" },
+        { key:"createdAt",    label:"Dibuat Pada",         isDate:true, includeTime:true },
+        { key:"updatedAt",    label:"Diperbarui Pada",     isDate:true, includeTime:true },
+      ]
+    },
+  ];
+
+  const renderFieldValue = (field, order) => {
+    if (!order) return "—";
+    if (field.special === "status" && order.tanggalStatusOrder)
+      return `${order[field.key]} · ${formatDate(order.tanggalStatusOrder)}`;
+    if (field.special === "currency" && order[field.key])
+      return `Rp ${Number(order[field.key]).toLocaleString("id-ID")}`;
+    if (field.isDate)
+      return formatDate(order[field.key], field.includeTime);
+    return order[field.key] || "—";
+  };
+
+  /* ── Loading ── */
   if (loading && !mounted) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className={`od-root ${T("od-page-dark","od-page-light")}`}
+        style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}>
+        <style>{STYLES}</style>
+        <div style={{ textAlign:"center" }}>
+          <div className="od-spinner" style={{ margin:"0 auto 16px" }} />
+          <p style={{ fontSize:13, color: d ? "rgba(99,148,255,0.5)" : "rgba(37,99,235,0.5)", fontFamily:"DM Sans,sans-serif" }}>
+            Memuat data order…
+          </p>
+        </div>
       </div>
     );
   }
 
+  /* ── Error ── */
   if (error) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
-            <p className="text-red-700 font-medium">{error}</p>
+      <div className={`od-root ${T("od-page-dark","od-page-light")}`} style={{ padding:"40px 24px" }}>
+        <style>{STYLES}</style>
+        <div style={{ maxWidth:560, margin:"0 auto" }}>
+          <div className={T("od-error-dark","od-error-light")}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+              <AlertTriangle style={{ width:20, height:20, color: d ? "#f87171" : "#dc2626", flexShrink:0 }} />
+              <p style={{ fontSize:14, fontWeight:600, color: d ? "#fca5a5" : "#b91c1c" }}>{error}</p>
+            </div>
+            <button onClick={() => navigate(`/orders/${portofolio}`)} className={T("od-back-dark","od-back-light")}>
+              <ArrowLeft style={{ width:14, height:14 }} /> Kembali ke Daftar Order
+            </button>
           </div>
-          <button 
-            onClick={() => navigate(`/orders/${portofolio}`)}
-            className="mt-4 inline-flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali ke Daftar Order
-          </button>
         </div>
       </div>
     );
@@ -460,138 +510,117 @@ const OrderDetail = () => {
   const canEdit = order && isEditableByRole(order, userPeran);
 
   return (
-    <div className={`p-6 max-w-6xl mx-auto transition-all duration-500 ${
-      mounted ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-    }`}>
-      {/* Header with Navigation */}
-      <div className="flex items-center mb-6">
-        <button 
-          onClick={() => navigate(`/orders/${portofolio}`)}
-          className="mr-4 p-2 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-blue-600" />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Detail Order</h2>
-          <div className="h-1 w-24 mt-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 rounded-full animate-gradient-x"></div>
-        </div>
-      </div>
+    <div className={`od-root ${d ? "od-page-dark" : "od-page-light od-light"}`}
+      style={{ padding:"28px 20px 48px", transition:"background .4s ease" }}>
+      <style>{STYLES}</style>
 
-      {/* Main Card */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-        {/* Blue accent top bar with gradient animation */}
-        <div className="h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 animate-gradient-x"></div>
-        
-        <div className="p-6">
-          {/* Order Info Header */}
-          {order && (
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-2 border-b border-gray-100">
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">{order.pelanggan || "No Customer Name"}</h3>
-                <p className="text-gray-600 mt-1">{order.nomorOrder || "No Order Number"}</p>
-              </div>
-              <div className="mt-3 md:mt-0">
-                <span className={`${getStatusBadge(order.statusOrder)}`}>
-                  {order.statusOrder || "No Status"}
+      <div style={{ maxWidth:960, margin:"0 auto" }}>
+
+        {/* ── Header ── */}
+        <div className="od-mount od-stagger-1" style={{ display:"flex", alignItems:"center", gap:14, marginBottom:24 }}>
+          <button
+            onClick={() => navigate(`/orders/${portofolio}`)}
+            className={T("od-back-dark","od-back-light")}
+          >
+            <ArrowLeft style={{ width:14, height:14 }} />
+            Kembali
+          </button>
+          <div>
+            <p className={T("od-h1-dark","od-h1-light")}>Detail Order</p>
+            <div className={T("od-accent-dark","od-accent-light")} style={{ width:60, marginTop:4 }} />
+          </div>
+        </div>
+
+        {/* ── Main Card ── */}
+        <div className={`od-mount od-stagger-1 ${T("od-card-dark","od-card-light")}`} style={{ marginBottom:20 }}>
+          <div className={T("od-accent-dark","od-accent-light")} />
+
+          <div style={{ padding:"22px 24px" }}>
+            {/* Order info header */}
+            {order && (
+              <div className={T("od-div-dark","od-div-light")}
+                style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:12, paddingBottom:18, marginBottom:20 }}>
+                <div>
+                  <p className={T("od-cust-dark","od-cust-light")}>{order.pelanggan || "—"}</p>
+                  <p className={T("od-ordno-dark","od-ordno-light")}>{order.nomorOrder || "—"}</p>
+                </div>
+                <span className={getStatusBadgeCls(order.statusOrder)}>
+                  {order.statusOrder || "—"}
                 </span>
               </div>
+            )}
+
+            {/* Tracking */}
+            {order && (
+              <TrackingStatus
+                currentStatus={order.statusOrder}
+                tanggalStatusOrder={order.tanggalStatusOrder}
+                formatDate={formatDate}
+                isDark={d}
+              />
+            )}
+
+            {/* Navigation instruction */}
+            {order && (
+              <NavigationInstruction currentStatus={order.statusOrder} userPeran={userPeran} />
+            )}
+          </div>
+        </div>
+
+        {/* ── Field Groups ── */}
+        {order && fieldGroups.map((group, gi) => (
+          <div
+            key={gi}
+            className={`od-mount ${group.stagger} ${T("od-section-dark","od-section-light")}`}
+            style={{ marginBottom:14 }}
+          >
+            <div className={T("od-sec-head-dark","od-sec-head-light")}>
+              {group.icon}
+              <p className={T("od-sec-title-dark","od-sec-title-light")}>{group.title}</p>
             </div>
-          )}
-
-          {/* Status Tracking - Ditambahkan di bawah Order Info Header */}
-          {order && (
-            <TrackingStatus 
-              currentStatus={order.statusOrder} 
-              tanggalStatusOrder={order.tanggalStatusOrder}
-              formatDate={formatDate}
-            />
-          )}
-
-          {order && (
-            <NavigationInstruction
-              currentStatus={order.statusOrder}
-              userPeran={userPeran}
-            />
-          )}
-
-          {/* Order Details */}
-          {order && (
-            <div className="space-y-8">
-              {fieldGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="bg-white rounded-lg border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center">
-                    {group.icon}
-                    <h3 className="ml-2 font-semibold text-gray-700">{group.title}</h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {group.fields.map((field) => (
-                        <div key={field.key} className="space-y-1">
-                          <p className="text-sm font-medium text-gray-500">{field.label}</p>
-                          <p className="text-base font-medium text-gray-800">
-                          {field.key === "statusOrder" && order.tanggalStatusOrder
-                    ? `${order[field.key]} pada ${formatDate(order.tanggalStatusOrder)}`
-                    : field.isDate
-                    ? formatDate(order[field.key], field.includeTime) 
-                    : field.key === "nilaiProforma"  || field.key === "nilaiInvoice"  && order[field.key] 
-                    ? `Rp ${Number(order[field.key]).toLocaleString()}`
-                    : order[field.key] || "-"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {order && userPeran !== "koordinator" && (
-            <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between gap-4">
-              <button 
-                onClick={() => navigate(`/orders/${portofolio}`)}
-                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali
-              </button>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                {canEdit ? (
-                  <button 
-                    onClick={() => navigate(`/orders/${portofolio}/detail/edit/${id}`)}
-                    className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </button>
-                ) : (
-                  showLengkapiButton() && (
-                  <button 
-                    onClick={() => navigate(`/orders/${portofolio}/detail/lengkapi/${id}`)}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Lengkapi Data
-                  </button>
-                  )
-                )
-                }
-                
-                {userPeran === "admin portofolio" && userBidang === portofolio && (
-                  <button 
-                    onClick={handleDelete}
-                    className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Hapus Order
-                  </button>
-                )}
+            <div style={{ padding:"18px 20px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:"16px 24px" }}>
+                {group.fields.map(field => (
+                  <FieldItem
+                    key={field.key}
+                    label={field.label}
+                    value={renderFieldValue(field, order)}
+                    isDark={d}
+                  />
+                ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        ))}
+
+        {/* ── Action Buttons ── */}
+        {order && userPeran !== "koordinator" && (
+          <div className="od-mount od-stagger-7"
+            style={{ display:"flex", flexWrap:"wrap", justifyContent:"space-between", alignItems:"center", gap:12, marginTop:8 }}>
+            <button onClick={() => navigate(`/orders/${portofolio}`)} className={T("od-btn-back-dark","od-btn-back-light")}>
+              <ArrowLeft style={{ width:14, height:14 }} /> Kembali
+            </button>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
+              {canEdit ? (
+                <button onClick={() => navigate(`/orders/${portofolio}/detail/edit/${id}`)} className="od-btn-edit">
+                  <Edit style={{ width:14, height:14 }} /> Edit
+                </button>
+              ) : (
+                showLengkapiButton() && (
+                  <button onClick={() => navigate(`/orders/${portofolio}/detail/lengkapi/${id}`)} className="od-btn-lengkapi">
+                    <Edit style={{ width:14, height:14 }} /> Lengkapi Data
+                  </button>
+                )
+              )}
+              {userPeran === "admin portofolio" && userBidang === portofolio && (
+                <button onClick={handleDelete} className="od-btn-delete">
+                  <Trash2 style={{ width:14, height:14 }} /> Hapus Order
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

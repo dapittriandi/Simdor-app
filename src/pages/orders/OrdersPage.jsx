@@ -4,7 +4,6 @@ import { db } from "../../services/firebase";
 import { collection, query, where, orderBy, limit, startAfter, getDocs } from "firebase/firestore";
 import debounce from "lodash.debounce";
 import {
-  ChartBarIcon,
   ClipboardDocumentListIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -13,98 +12,379 @@ import {
   ChevronRightIcon,
   PlusIcon,
   DocumentTextIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline'; // Use outline icons like in DashboardCS
+  ChevronUpDownIcon,
+} from "@heroicons/react/24/outline";
+import { useNavigate as useNav } from "react-router-dom";
+import { useTheme } from "../../components/layout/ThemeContext";
 
+/* ─────────────────────────────────────────────
+   STYLES  (same design language as Header.jsx & DashboardCS.jsx)
+───────────────────────────────────────────── */
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+
+.op-root { font-family: 'DM Sans', sans-serif; }
+
+.op-bg-dark  { background: #070b18; min-height: 100vh; }
+.op-bg-light { background: #f0f4ff; min-height: 100vh; }
+
+.op-title-dark  { color: rgba(219,234,254,0.92); }
+.op-title-light { color: #1e3a6e; }
+
+.op-muted-dark  { color: rgba(148,163,220,0.55); }
+.op-muted-light { color: #7b95c4; }
+
+/* Panel */
+.op-panel-dark {
+  background: rgba(13,20,45,0.7);
+  border: 1px solid rgba(99,148,255,0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.op-panel-light {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(59,130,246,0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 2px 20px rgba(59,130,246,0.06);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Panel header */
+.op-panel-hdr-dark  { border-bottom: 1px solid rgba(99,148,255,0.1); }
+.op-panel-hdr-light { border-bottom: 1px solid rgba(59,130,246,0.08); }
+
+/* Search / filter inputs */
+.op-input-dark {
+  background: rgba(7,11,24,0.6);
+  border: 1px solid rgba(99,148,255,0.15);
+  border-radius: 10px;
+  color: rgba(219,234,254,0.88);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+}
+.op-input-dark::placeholder { color: rgba(148,163,220,0.4); }
+.op-input-dark:focus {
+  border-color: rgba(96,165,250,0.45);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+.op-input-light {
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 10px;
+  color: #1e3a6e;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+}
+.op-input-light::placeholder { color: #a0b4d0; }
+.op-input-light:focus {
+  border-color: rgba(59,130,246,0.4);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+}
+
+/* Select appearance reset */
+.op-select { appearance: none; -webkit-appearance: none; }
+
+/* Table */
+.op-thead-dark  { background: rgba(7,11,24,0.6); }
+.op-thead-light { background: rgba(240,246,255,0.7); }
+.op-th-dark  { color: rgba(148,163,220,0.65); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px 16px; white-space: nowrap; }
+.op-th-light { color: #6885b5; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px 16px; white-space: nowrap; }
+.op-td-dark  { color: rgba(179,193,240,0.85); font-size: 13px; padding: 12px 16px; border-bottom: 1px solid rgba(99,148,255,0.06); }
+.op-td-light { color: #334e7a; font-size: 13px; padding: 12px 16px; border-bottom: 1px solid rgba(59,130,246,0.06); }
+.op-td-name-dark  { color: rgba(219,234,254,0.9); font-weight: 500; }
+.op-td-name-light { color: #1e3a6e; font-weight: 500; }
+.op-tr-dark:hover  { background: rgba(59,130,246,0.05); }
+.op-tr-light:hover { background: rgba(59,130,246,0.04); }
+
+/* Skeleton */
+@keyframes opShimmer {
+  0%,100% { opacity: 0.4; } 50% { opacity: 0.8; }
+}
+.op-sk-dark  { background: rgba(99,148,255,0.1); border-radius: 6px; animation: opShimmer 1.6s ease-in-out infinite; }
+.op-sk-light { background: rgba(59,130,246,0.08); border-radius: 6px; animation: opShimmer 1.6s ease-in-out infinite; }
+
+/* Entry animation */
+@keyframes opIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.op-animate { animation: opIn 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Add Order button */
+.op-btn-primary-dark {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: white; border: none;
+  padding: 9px 18px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+  transition: all 0.22s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-btn-primary-dark:hover {
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  box-shadow: 0 6px 20px rgba(37,99,235,0.5);
+  transform: translateY(-1px);
+}
+.op-btn-primary-light {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: white; border: none;
+  padding: 9px 18px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+  transition: all 0.22s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-btn-primary-light:hover {
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  box-shadow: 0 6px 18px rgba(37,99,235,0.38);
+  transform: translateY(-1px);
+}
+
+/* Reset button */
+.op-btn-ghost-dark {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(99,148,255,0.15);
+  border-radius: 10px; color: rgba(148,163,220,0.75);
+  padding: 9px 14px; font-size: 13.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.op-btn-ghost-dark:hover {
+  background: rgba(59,130,246,0.1);
+  border-color: rgba(96,165,250,0.3);
+  color: #93c5fd;
+}
+.op-btn-ghost-light {
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 10px; color: #5878a8;
+  padding: 9px 14px; font-size: 13.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.op-btn-ghost-light:hover {
+  background: rgba(59,130,246,0.06);
+  border-color: rgba(59,130,246,0.3);
+  color: #1d4ed8;
+}
+
+/* Detail button */
+.op-btn-detail-dark {
+  background: rgba(59,130,246,0.14);
+  border: 1px solid rgba(96,165,250,0.25);
+  border-radius: 8px; color: #93c5fd;
+  padding: 6px 14px; font-size: 12.5px; font-weight: 500;
+  cursor: pointer; transition: all 0.18s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-btn-detail-dark:hover {
+  background: rgba(59,130,246,0.25);
+  border-color: rgba(96,165,250,0.45);
+  box-shadow: 0 0 12px rgba(59,130,246,0.2);
+}
+.op-btn-detail-light {
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 8px; color: #2563eb;
+  padding: 6px 14px; font-size: 12.5px; font-weight: 500;
+  cursor: pointer; transition: all 0.18s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-btn-detail-light:hover {
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.38);
+}
+
+/* Pagination button */
+.op-page-btn-dark {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 10px;
+  border: 1px solid rgba(99,148,255,0.15);
+  background: rgba(255,255,255,0.04);
+  color: rgba(148,163,220,0.75); font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-page-btn-dark:hover:not(:disabled) {
+  background: rgba(59,130,246,0.1);
+  border-color: rgba(96,165,250,0.3);
+  color: #93c5fd;
+}
+.op-page-btn-dark:disabled { opacity: 0.35; cursor: not-allowed; }
+.op-page-btn-light {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 10px;
+  border: 1px solid rgba(59,130,246,0.15);
+  background: rgba(255,255,255,0.75);
+  color: #5878a8; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.op-page-btn-light:hover:not(:disabled) {
+  background: rgba(59,130,246,0.06);
+  border-color: rgba(59,130,246,0.3);
+  color: #1d4ed8;
+}
+.op-page-btn-light:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Icon position helper */
+.op-input-wrap { position: relative; }
+.op-input-icon {
+  position: absolute; left: 11px; top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  width: 16px; height: 16px;
+}
+`;
+
+/* ─────────────────────────────────────────────
+   STATUS BADGE
+───────────────────────────────────────────── */
+const STATUS_CONFIG = {
+  "Entry":                  { bg: "rgba(16,185,129,0.15)",  border: "rgba(16,185,129,0.3)",  color: "#34d399" },
+  "Diproses - Lapangan":    { bg: "rgba(59,130,246,0.15)",  border: "rgba(59,130,246,0.3)",  color: "#60a5fa" },
+  "Invoice":                { bg: "rgba(245,158,11,0.15)",  border: "rgba(245,158,11,0.3)",  color: "#fbbf24" },
+  "New Order":              { bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.25)",color: "#94a3b8" },
+  "Selesai":                { bg: "rgba(20,184,166,0.15)",  border: "rgba(20,184,166,0.3)",  color: "#2dd4bf" },
+  "Diproses - Sertifikat":  { bg: "rgba(139,92,246,0.15)",  border: "rgba(139,92,246,0.3)",  color: "#a78bfa" },
+  "Closed Order":           { bg: "rgba(249,115,22,0.15)",  border: "rgba(249,115,22,0.3)",  color: "#fb923c" },
+  "Penerbitan Proforma":    { bg: "rgba(6,182,212,0.15)",   border: "rgba(6,182,212,0.3)",   color: "#22d3ee" },
+};
+
+const StatusBadge = ({ status }) => {
+  const cfg = STATUS_CONFIG[status] || { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.3)", color: "#f87171" };
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 500,
+      background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+      whiteSpace: "nowrap",
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.color, flexShrink: 0 }} />
+      {status || "—"}
+    </span>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   KELENGKAPAN BADGE
+───────────────────────────────────────────── */
+const KelengkapanBadge = ({ isComplete }) => (
+  <span style={{
+    display: "inline-flex", alignItems: "center", gap: 5,
+    padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 500,
+    background: isComplete ? "rgba(20,184,166,0.15)" : "rgba(239,68,68,0.12)",
+    border: `1px solid ${isComplete ? "rgba(20,184,166,0.3)" : "rgba(239,68,68,0.25)"}`,
+    color: isComplete ? "#2dd4bf" : "#f87171",
+    whiteSpace: "nowrap",
+  }}>
+    <span style={{
+      width: 5, height: 5, borderRadius: "50%",
+      background: isComplete ? "#2dd4bf" : "#f87171", flexShrink: 0,
+    }} />
+    {isComplete ? "Lengkap" : "Tidak Lengkap"}
+  </span>
+);
+
+/* ─────────────────────────────────────────────
+   SKELETON
+───────────────────────────────────────────── */
+const Sk = ({ w, h, d, style = {} }) => (
+  <div className={`op-sk-${d ? "dark" : "light"}`} style={{ width: w, height: h, ...style }} />
+);
+
+const TableRowSkeleton = ({ d }) => (
+  <tr>
+    {[24, 120, 80, 80, 90, 70, 50].map((w, i) => (
+      <td key={i} className={`op-td-${d ? "dark" : "light"}`}>
+        <Sk w={w} h={i === 2 || i === 5 ? 20 : 13} d={d} style={i === 2 || i === 5 ? { borderRadius: 20 } : {}} />
+      </td>
+    ))}
+  </tr>
+);
+
+/* ─────────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────────── */
 const OrdersPage = () => {
   const { portofolio } = useParams();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
+  const d = isDark;
 
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [lastDoc, setLastDoc] = useState(null);
-  const [firstDoc, setFirstDoc] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(true);
   const perPage = 10;
 
-  // Data user dari localStorage
   const userData = JSON.parse(localStorage.getItem("user")) || {};
   const userPeran = userData.peran || "";
   const userBidang = userData.bidang || "";
 
   useEffect(() => {
-    if (!userPeran) {
-      alert("Anda tidak memiliki akses!");
-      navigate("/");
-      return;
-    }
-
+    if (!userPeran) { alert("Anda tidak memiliki akses!"); navigate("/"); return; }
     if (userPeran === "admin portofolio" && userBidang !== portofolio) {
-      alert("Anda tidak memiliki akses!");
-      navigate("/");
-      return;
+      alert("Anda tidak memiliki akses!"); navigate("/"); return;
     }
-
     fetchOrders();
   }, [portofolio, userPeran, userBidang, currentPage, filterStatus]);
 
-  // Fetch data orders dari Firestore
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      let q = query(
-        collection(db, "orders"),
+      let constraints = [
         where("portofolio", "==", portofolio),
         orderBy("createdAt", "desc"),
-        limit(perPage)
-      );
+        limit(perPage),
+      ];
+      if (filterStatus) constraints.push(where("statusOrder", "==", filterStatus));
+      if (currentPage > 1 && lastDoc) constraints.push(startAfter(lastDoc));
 
-      if (filterStatus) {
-        q = query(q, where("statusOrder", "==", filterStatus));
-      }
-
-      if (currentPage > 1 && lastDoc) {
-        q = query(q, startAfter(lastDoc));
-      }
-
-      const querySnapshot = await getDocs(q);
-      const ordersData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setOrders(ordersData);
-      setAllOrders(ordersData);
-      setFirstDoc(querySnapshot.docs[0] || null);
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasNextPage(querySnapshot.docs.length === perPage);
+      const snap = await getDocs(query(collection(db, "orders"), ...constraints));
+      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setOrders(data);
+      setAllOrders(data);
+      setLastDoc(snap.docs[snap.docs.length - 1] || null);
+      setHasNextPage(snap.docs.length === perPage);
     } catch (err) {
       console.error("Error fetching orders:", err);
-      // Error notification removed
     }
     setLoading(false);
   };
 
-  // Fungsi Pencarian (Debounce)
   const debouncedSearch = useCallback(
     debounce((value) => {
-      if (!value) {
-        setOrders(allOrders);
-      } else {
-        const searchLower = value.toLowerCase();
-        const filteredOrders = allOrders.filter(
-          (order) =>
-            order.pelanggan?.toLowerCase().includes(searchLower) ||
-            order.nomorOrder?.toLowerCase().includes(searchLower)
-        );
-        setOrders(filteredOrders);
-      }
+      if (!value) { setOrders(allOrders); return; }
+      const q = value.toLowerCase();
+      setOrders(allOrders.filter(
+        (o) => o.pelanggan?.toLowerCase().includes(q) || o.nomorOrder?.toLowerCase().includes(q)
+      ));
     }, 500),
     [allOrders]
   );
@@ -114,390 +394,280 @@ const OrdersPage = () => {
     debouncedSearch(e.target.value);
   };
 
-  // Fungsi Filter Status Order
   useEffect(() => {
-    if (!filterStatus) {
-      setOrders(allOrders);
-    } else {
-      const filtered = allOrders.filter((order) => order.statusOrder === filterStatus);
-      setOrders(filtered);
-    }
+    if (!filterStatus) setOrders(allOrders);
+    else setOrders(allOrders.filter((o) => o.statusOrder === filterStatus));
   }, [filterStatus, allOrders]);
 
-  // Fungsi Reset Pencarian & Filter
   const handleReset = () => {
     setSearchQuery("");
     setFilterStatus("");
     setOrders(allOrders);
   };
 
-  // // Fungsi untuk mengecek kelengkapan data
-  // const checkKelengkapan = (order) => {
-  //   const requiredFields = [
-  //     "pelanggan",
-  //     "statusOrder",
-  //     "nomorOrder",
-  //     "tanggalOrder",
-  //     "lokasiPekerjaan",
-  //     "tonaseDS",
-  //     "nilaiProforma",
-  //     "nomorInvoice",
-  //   ];
-
-  //   const isComplete = requiredFields.every((field) => order[field]);
-  //   return { 
-  //     isComplete, 
-  //     text: isComplete ? "Lengkap" : "Tidak Lengkap" 
-  //   };
-  // };
-
-  const checkKelengkapan = (order, userPeran) => {
-    // Definisikan field yang harus diisi berdasarkan peran
+  const checkKelengkapan = (order, peran) => {
     const requiredFields = {
       "admin portofolio": [
-        "pelanggan",
-        "statusOrder",
-        "tanggalStatusOrder",
-        "tanggalSerahOrderKeCs",
-        "tanggalPekerjaan",
-        "proformaSerahKeOps",
-        "proformaSerahKeDukbis",
-        "jenisSertifikat",
-        "noSiSpk",
-        "jenisPekerjaan",
-        "namaTongkang",
-        "lokasiPekerjaan",
-        "estimasiTonase",
-        "tonaseDS",
-        "nilaiProforma",
-        "distribusiSertifikatPengirim",
-        "distribusiSertifikatPengirimTanggal",
-        "distribusiSertifikatPenerima",
-        "distribusiSertifikatPenerimaTanggal",
+        "pelanggan","statusOrder","tanggalStatusOrder","tanggalSerahOrderKeCs","tanggalPekerjaan",
+        "proformaSerahKeOps","proformaSerahKeDukbis","jenisSertifikat","keteranganSertifikatPM06",
+        "noSiSpk","jenisPekerjaan","namaTongkang","lokasiPekerjaan","estimasiTonase","tonaseDS",
+        "nilaiProforma","tanggalPengirimanInvoice","tanggalPengirimanFaktur","nomorInvoice",
+        "fakturPajak","nilaiInvoice","nomorOrder","tanggalOrder",
+        "distribusiSertifikatPengirim","distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima","distribusiSertifikatPenerimaTanggal",
       ],
-      "customer service": ["nomorOrder", "tanggalOrder"],
+      "customer service": ["nomorOrder","tanggalOrder"],
       "admin keuangan": [
-        "tanggalPengirimanInvoice",
-        "tanggalPengirimanFaktur",
-        "nomorInvoice",
-        "fakturPajak",
-        "nilaiInvoice",
-        "distribusiSertifikatPengirim",
-        "distribusiSertifikatPengirimTanggal",
-        "distribusiSertifikatPenerima",
-        "distribusiSertifikatPenerimaTanggal",
+        "tanggalPengirimanInvoice","tanggalPengirimanFaktur","nomorInvoice","fakturPajak",
+        "nilaiInvoice","distribusiSertifikatPengirim","distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima","distribusiSertifikatPenerimaTanggal",
       ],
-      "koordinator": [
-        "pelanggan",
-        "statusOrder",
-        "tanggalStatusOrder",
-        "tanggalSerahOrderKeCs",
-        "tanggalPekerjaan",
-        "proformaSerahKeOps",
-        "proformaSerahKeDukbis",
-        "jenisSertifikat",
-        "keteranganSertifikatPM06",
-        "noSiSpk",
-        "jenisPekerjaan",
-        "namaTongkang",
-        "lokasiPekerjaan",
-        "estimasiTonase",
-        "tonaseDS",
-        "nilaiProforma",
-        "tanggalPengirimanInvoice",
-        "tanggalPengirimanFaktur",
-        "nomorInvoice",
-        "fakturPajak",
-        "nilaiInvoice",
-        "nomorOrder", 
-        "tanggalOrder",
-        "distribusiSertifikatPengirim",
-        "distribusiSertifikatPengirimTanggal",
-        "distribusiSertifikatPenerima",
-        "distribusiSertifikatPenerimaTanggal",
+      "koordinator": ["pelanggan","statusOrder","tanggalStatusOrder","tanggalSerahOrderKeCs",
+        "tanggalPekerjaan","proformaSerahKeOps","proformaSerahKeDukbis","jenisSertifikat",
+        "noSiSpk","jenisPekerjaan","namaTongkang","lokasiPekerjaan","estimasiTonase",
+        "tonaseDS","nilaiProforma","distribusiSertifikatPengirim","distribusiSertifikatPengirimTanggal",
+        "distribusiSertifikatPenerima","distribusiSertifikatPenerimaTanggal",
       ],
     };
-  
-    // Ambil fields yang harus diisi untuk peran yang sedang aktif
-    const fieldsToCheck = requiredFields[userPeran] || [];
-  
-    // Cek apakah semua field yang diperlukan sudah terisi
-    const isComplete = fieldsToCheck.every((field) => order[field]);
-  
-    return {
-      isComplete,
-      text: isComplete ? "Lengkap" : "Tidak Lengkap",
-    };
-  };
-  
-
-  // Get status badge styling
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Entry":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "Diproses - Lapangan":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "Invoice":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "New Order":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
-      case "Selesai":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "Diproses - Sertifikat":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "Closed Order":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
-      default:
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
-    }
+    const fields = requiredFields[peran] || [];
+    const isComplete = fields.every((f) => order[f]);
+    return { isComplete, text: isComplete ? "Lengkap" : "Tidak Lengkap" };
   };
 
-  // Pagination Control
-  const nextPage = () => {
-    if (hasNextPage) {
-      setCurrentPage(currentPage + 1);
-    }
+  const formatDate = (ts) => {
+    if (!ts?.seconds) return "—";
+    try {
+      return new Date(ts.seconds * 1000).toLocaleDateString("id-ID", {
+        day: "2-digit", month: "long", year: "numeric",
+      });
+    } catch { return "—"; }
   };
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // Skeletons for loading states
-  const TableRowSkeleton = () => (
-    <tr className="animate-pulse">
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-4 w-4 bg-gray-200 rounded"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-4 w-32 bg-gray-200 rounded"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-5 w-16 bg-gray-200 rounded-full"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-4 w-20 bg-gray-200 rounded"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-5 w-16 bg-gray-200 rounded-full"></div></td>
-      <td className="px-6 py-3 whitespace-nowrap"><div className="h-8 w-16 bg-gray-200 rounded"></div></td>
-    </tr>
-  );
+  const inputIconColor = d ? "rgba(148,163,220,0.5)" : "#a0b4d0";
 
   return (
-    // Background page & padding to match CS dashboard
-    <div className="bg-slate-100 min-h-screen p-4 md:p-8">
-      <div className="max-w-7xl mx-auto"> {/* Match max width with CS dashboard */}
-        {/* Page title */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
-            <ClipboardDocumentListIcon className="h-7 w-7 text-blue-600" />
-            Daftar Order {portofolio?.toUpperCase()}
-          </h2>
-          {/* Action Button moved to title row */}
-          {userPeran === "admin portofolio" && (
-            <button
-              onClick={() => navigate(`/orders/${portofolio}/create`)}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
+    <>
+      <style>{STYLES}</style>
+      <div
+        className={`op-root op-bg-${d ? "dark" : "light"}`}
+        style={{ padding: "28px 24px 48px", transition: "background 0.4s" }}
+      >
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+          {/* ── Page Header ── */}
+          <div
+            className="op-animate"
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}
+          >
+            <div>
+              <h2
+                className={`op-title-${d ? "dark" : "light"}`}
+                style={{ fontSize: 26, fontWeight: 600, margin: 0, display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <ClipboardDocumentListIcon style={{ width: 26, height: 26, color: "#3b82f6", flexShrink: 0 }} />
+                Daftar Order {portofolio?.toUpperCase()}
+              </h2>
+              <p
+                className={`op-muted-${d ? "dark" : "light"}`}
+                style={{ fontSize: 13, margin: "4px 0 0 36px" }}
+              >
+                {portofolio} · menampilkan {perPage} order per halaman
+              </p>
+            </div>
+
+            {userPeran === "admin portofolio" && (
+              <button
+                className={`op-btn-primary-${d ? "dark" : "light"}`}
+                onClick={() => navigate(`/orders/${portofolio}/create`)}
+              >
+                <PlusIcon style={{ width: 16, height: 16 }} />
+                Tambah Order
+              </button>
+            )}
+          </div>
+
+          {/* ── Main Panel ── */}
+          <div
+            className={`op-panel-${d ? "dark" : "light"} op-animate`}
+            style={{ animationDelay: "80ms" }}
+          >
+            {/* Panel Header — Search & Filter */}
+            <div
+              className={`op-panel-hdr-${d ? "dark" : "light"}`}
+              style={{ padding: "16px 20px", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}
             >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Tambah Order
-            </button>
-          )}
-        </div>
-
-        {/* Error notification removed */}
-
-        {/* Main Content */}
-        <div className="bg-white shadow-md rounded-lg border border-gray-200 overflow-hidden">
-          <div className="p-6">
-            {/* Search & Filter Bar */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="relative flex-grow">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <MagnifyingGlassIcon className="w-5 h-5" />
-                </div>
+              {/* Search */}
+              <div className="op-input-wrap" style={{ flex: "1 1 220px" }}>
+                <MagnifyingGlassIcon
+                  className="op-input-icon"
+                  style={{ color: inputIconColor }}
+                />
                 <input
                   type="text"
-                  placeholder="Cari Nama Pelanggan / Nomor Order..."
+                  placeholder="Cari pelanggan / nomor order…"
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  className="pl-10 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none"
+                  className={`op-input-${d ? "dark" : "light"}`}
                 />
               </div>
-              
-              <div className="relative w-full md:w-auto">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <FunnelIcon className="w-5 h-5" />
-                </div>
+
+              {/* Filter Status */}
+              <div className="op-input-wrap" style={{ flex: "0 1 210px" }}>
+                <FunnelIcon
+                  className="op-input-icon"
+                  style={{ color: inputIconColor }}
+                />
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all focus:outline-none appearance-none"
+                  className={`op-input-${d ? "dark" : "light"} op-select`}
+                  style={{ paddingRight: 32 }}
                 >
                   <option value="">Semua Status</option>
                   <option value="New Order">New Order</option>
                   <option value="Entry">Entry</option>
                   <option value="Diproses - Lapangan">Diproses - Lapangan</option>
                   <option value="Diproses - Sertifikat">Diproses - Sertifikat</option>
-                  <option value="Closed Order">Closed Order</option>
                   <option value="Penerbitan Proforma">Penerbitan Proforma</option>
                   <option value="Invoice">Invoice</option>
+                  <option value="Closed Order">Closed Order</option>
                   <option value="Selesai">Selesai</option>
-                  {/* <option value="Archecking">Archecking</option> */}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
+                <ChevronUpDownIcon style={{
+                  position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                  width: 14, height: 14, color: inputIconColor, pointerEvents: "none",
+                }} />
               </div>
-              
+
+              {/* Reset */}
               <button
+                className={`op-btn-ghost-${d ? "dark" : "light"}`}
                 onClick={handleReset}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all focus:outline-none flex items-center justify-center"
+                style={{ flex: "0 0 auto" }}
               >
-                <ArrowPathIcon className="w-4 h-4 mr-2" />
+                <ArrowPathIcon style={{ width: 14, height: 14 }} />
                 Reset
               </button>
             </div>
 
-            {/* Loading State */}
-            {loading && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pelanggan</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelengkapan Data</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {[...Array(5)].map((_, index) => (
-                      <TableRowSkeleton key={index} />
+            {/* ── Table ── */}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+                <thead className={`op-thead-${d ? "dark" : "light"}`}>
+                  <tr>
+                    {["#", "Nama Pelanggan", "Status Order", "Nomor Order", "Tanggal Order", "Kelengkapan", "Aksi"].map((h) => (
+                      <th key={h} className={`op-th-${d ? "dark" : "light"}`} style={{ textAlign: "left" }}>{h}</th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && orders.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <div className="bg-gray-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
-                  <DocumentTextIcon className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-700">Tidak ada data order</h3>
-                {/* <p className="text-gray-500 mt-1">Tidak ada order yang sesuai dengan filter yang dipilih</p> */}
-              </div>
-            )}
-
-            {/* Table Data */}
-            {!loading && orders.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} d={d} />)
+                  ) : orders.length === 0 ? (
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pelanggan</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Order</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelengkapan Data</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                      <td colSpan={7}>
+                        <div style={{ textAlign: "center", padding: "52px 16px" }}>
+                          <div style={{
+                            width: 56, height: 56, borderRadius: "50%", margin: "0 auto 14px",
+                            background: d ? "rgba(99,148,255,0.08)" : "rgba(59,130,246,0.06)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <DocumentTextIcon style={{ width: 26, height: 26, color: d ? "rgba(148,163,220,0.4)" : "#a0b4d0" }} />
+                          </div>
+                          <p
+                            className={`op-title-${d ? "dark" : "light"}`}
+                            style={{ fontSize: 15, fontWeight: 500, margin: "0 0 4px" }}
+                          >
+                            Tidak ada data order
+                          </p>
+                          <p className={`op-muted-${d ? "dark" : "light"}`} style={{ fontSize: 13, margin: 0 }}>
+                            Coba ubah filter atau kata kunci pencarian
+                          </p>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {orders.map((order, index) => {
+                  ) : (
+                    orders.map((order, idx) => {
                       const kelengkapan = checkKelengkapan(order, userPeran);
                       return (
-                        <tr key={order.id} className="hover:bg-slate-50 transition-colors duration-150">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {(currentPage - 1) * perPage + index + 1}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {order.pelanggan || "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={getStatusClass(order.statusOrder)}>
-                              {order.statusOrder || "-"}
+                        <tr
+                          key={order.id}
+                          className={`op-tr-${d ? "dark" : "light"}`}
+                          style={{ transition: "background 0.15s" }}
+                        >
+                          <td className={`op-td-${d ? "dark" : "light"}`} style={{ paddingLeft: 20, width: 48 }}>
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, opacity: 0.45 }}>
+                              {String((currentPage - 1) * perPage + idx + 1).padStart(2, "0")}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {order.nomorOrder || "-"}
+                          <td className={`op-td-${d ? "dark" : "light"} op-td-name-${d ? "dark" : "light"}`} style={{ whiteSpace: "nowrap" }}>
+                            {order.pelanggan || "—"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {order.tanggalOrder
-                              ? new Date(order.tanggalOrder.seconds * 1000).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "long",
-                                  year: "numeric",
-                                })
-                              : "-"}
+                          <td className={`op-td-${d ? "dark" : "light"}`}>
+                            <StatusBadge status={order.statusOrder} />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${
-                              kelengkapan.isComplete 
-                                ? "bg-green-100 text-green-800 border border-green-200" 
-                                : "bg-red-100 text-red-800 border border-red-200"
-                            }`}>
-                              {kelengkapan.isComplete ? "✓" : "✗"} {kelengkapan.text}
-                            </span>
+                          <td className={`op-td-${d ? "dark" : "light"}`} style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                            {order.nomorOrder || "—"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button 
-                              onClick={() => navigate(`/orders/${portofolio}/detail/${order.id}`)} 
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+                          <td className={`op-td-${d ? "dark" : "light"}`} style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, whiteSpace: "nowrap" }}>
+                            {formatDate(order.tanggalOrder)}
+                          </td>
+                          <td className={`op-td-${d ? "dark" : "light"}`}>
+                            <KelengkapanBadge isComplete={kelengkapan.isComplete} />
+                          </td>
+                          <td className={`op-td-${d ? "dark" : "light"}`} style={{ whiteSpace: "nowrap" }}>
+                            <button
+                              className={`op-btn-detail-${d ? "dark" : "light"}`}
+                              onClick={() => navigate(`/orders/${portofolio}/detail/${order.id}`)}
                             >
                               Detail
                             </button>
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-            {/* Pagination */}
+            {/* ── Pagination ── */}
             {!loading && orders.length > 0 && (
-              <div className="flex justify-between items-center mt-6">
-                <button 
-                  onClick={prevPage} 
-                  disabled={currentPage === 1} 
-                  className={`flex items-center px-4 py-2 rounded-lg border ${
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                      : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
-                  }`}
+              <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: `1px solid ${d ? "rgba(99,148,255,0.08)" : "rgba(59,130,246,0.07)"}` }}>
+                <button
+                  className={`op-page-btn-${d ? "dark" : "light"}`}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
                 >
-                  <ChevronLeftIcon className="w-5 h-5 mr-1" />
-                  Previous
+                  <ChevronLeftIcon style={{ width: 15, height: 15 }} />
+                  Sebelumnya
                 </button>
-                
-                <div className="text-sm font-medium text-gray-700">
-                  Halaman <span className="font-semibold text-blue-600">{currentPage}</span>
-                </div>
-                
-                <button 
-                  onClick={nextPage} 
-                  disabled={!hasNextPage} 
-                  className={`flex items-center px-4 py-2 rounded-lg border ${
-                    !hasNextPage
-                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                      : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
-                  }`}
+
+                <span
+                  className={`op-muted-${d ? "dark" : "light"}`}
+                  style={{ fontSize: 13 }}
                 >
-                  Next
-                  <ChevronRightIcon className="w-5 h-5 ml-1" />
+                  Halaman{" "}
+                  <span style={{ fontWeight: 600, color: d ? "#93c5fd" : "#2563eb", fontFamily: "'DM Mono', monospace" }}>
+                    {currentPage}
+                  </span>
+                </span>
+
+                <button
+                  className={`op-page-btn-${d ? "dark" : "light"}`}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={!hasNextPage}
+                >
+                  Selanjutnya
+                  <ChevronRightIcon style={{ width: 15, height: 15 }} />
                 </button>
               </div>
             )}
           </div>
+
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
