@@ -416,7 +416,13 @@ const userData = activeUser;  const userEmail  = userData?.email || "";
 
       <div
         className="co-mount"
-        style={{ maxWidth:800, margin:"0 auto", opacity: mounted ? 1 : 0, transition:"opacity .4s" }}>
+        style={{
+          maxWidth: 800,
+          margin: "0 auto",
+          opacity: mounted ? 1 : 0,
+          transition: "opacity .4s"
+        }}
+      >
 
         {/* ── Header ── */}
         <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:24 }}>
