@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUser } from "../../context/UserContext";
 import { db } from "../../services/firebase";
 import { collection, query, getDocs } from "firebase/firestore";
 import {
@@ -271,13 +272,13 @@ const DashboardKeuangan = () => {
   const [error,     setError]     = useState(null);
   const [mounted,   setMounted]   = useState(false);
 
-  const userData  = JSON.parse(localStorage.getItem("user")) || {};
+  const { activeUser } = useUser();
+  const userData = activeUser || {};
   const userPeran = userData.peran || "";
 
   useEffect(() => {
     setMounted(true);
     if (!userPeran || userPeran !== "admin keuangan") {
-      alert("Anda tidak memiliki akses!");
       navigate("/");
     }
   }, []);

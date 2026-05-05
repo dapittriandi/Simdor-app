@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../../services/firebase";
 import { collection, query, getDocs } from "firebase/firestore";
+import { useUser } from "../../context/UserContext";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
@@ -336,7 +337,7 @@ const CustomTooltip = ({ active, payload, label, isDark }) => {
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 const DashboardKoordinator = () => {
-  const navigate  = useNavigate();
+const navigate = useNavigate();
   const { isDark } = useTheme();
   const d = isDark;
 
@@ -348,15 +349,14 @@ const DashboardKoordinator = () => {
   const [isRefresh,  setIsRefresh]  = useState(false);
   const [error,      setError]      = useState(null);
   const [mounted,    setMounted]    = useState(false);
-
-  const userData  = JSON.parse(localStorage.getItem("user")) || {};
+  const { activeUser } = useUser();
+  const userData = activeUser || {};
   const userPeran = userData.peran || "";
 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!userPeran || userPeran !== "koordinator") {
-      alert("Anda tidak memiliki akses!");
       navigate("/");
       return;
     }

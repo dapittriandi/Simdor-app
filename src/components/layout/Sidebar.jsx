@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { LogOut, LayoutDashboard, FileText, BarChart2, Folder, ChevronDown, X } from "lucide-react";
 import { useTheme } from "./ThemeContext";
+import { useUser } from "../../context/UserContext";
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -117,17 +118,15 @@ const STYLES = `
 
 export default function Sidebar({ onClose, isMobileDrawer = false }) {
   const { isDark } = useTheme();
-  const [user, setUser] = useState(null);
   const [isPortoOpen, setIsPortoOpen] = useState(false);
-  const navigate = useNavigate();
+  const { activeUser, logout } = useUser();
   const location = useLocation();
 
-  useEffect(() => {
-    const u = JSON.parse(localStorage.getItem("user"));
-    if (u) setUser(u);
-  }, []);
+  // Gunakan activeUser langsung dari context — reaktif saat switch role
+  // Tidak perlu state lokal "user" karena context sudah handle reactivity
+  const user = activeUser;
 
-  const handleLogout = () => { localStorage.removeItem("user"); navigate("/"); };
+  const handleLogout = () => logout();
   const isActive = (path) => location.pathname === path;
 
   const portoList = ["BATUBARA","KSP","PIK","INDUSTRI","HMPM","AEBT","MINERAL","HALAL","LABORATORIUM","SERCO","LSI"];

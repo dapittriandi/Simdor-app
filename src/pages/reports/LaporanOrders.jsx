@@ -1,711 +1,890 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { db } from "../../services/firebase";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { exportToExcel } from "../../utils/exportToExcel";
-import { FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import {
+  FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Search, X, Download, RefreshCw, SlidersHorizontal,
+  TrendingUp, Package, CheckCircle2, Clock, Filter,
+  LayoutList, Table2, ChevronDown, AlertCircle,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../components/layout/ThemeContext";
 
-const LaporanOrders = () => {
-  const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [portofolioFilter, setPortofolioFilter] = useState("");
+/* ═══════════════════════════════════════════
+   STYLES
+═══════════════════════════════════════════ */
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+.lp-root * { box-sizing: border-box; }
+.lp-root { font-family: 'DM Sans', sans-serif; }
+
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lp-mounted { animation: lp-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+/* ── MAIN CARD ── */
+.lp-card-dark  {
+  background: rgba(10,16,35,0.75);
+  border: 1px solid rgba(99,148,255,0.13);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02);
+}
+.lp-card-light {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(59,130,246,0.13);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(59,130,246,0.08), 0 0 0 1px rgba(255,255,255,0.9);
+}
+
+/* gradient top line */
+.lp-topbar {
+  height: 3px;
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(90deg, #1d4ed8 0%, #60a5fa 40%, #a78bfa 70%, #3b82f6 100%);
+  background-size: 200% 100%;
+  animation: lp-flow 4s linear infinite;
+}
+@keyframes lp-flow { 0%{background-position:0 0} 100%{background-position:200% 0} }
+
+/* ── STAT CARDS ── */
+.lp-stat-dark {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(99,148,255,0.12);
+  border-radius: 14px; padding: 15px 16px;
+  transition: all .22s ease; cursor: default;
+}
+.lp-stat-dark:hover { background: rgba(59,130,246,0.08); border-color: rgba(96,165,250,0.25); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.1); }
+.lp-stat-light {
+  background: white;
+  border: 1px solid rgba(59,130,246,0.12);
+  border-radius: 14px; padding: 15px 16px;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.06);
+  transition: all .22s ease; cursor: default;
+}
+.lp-stat-light:hover { border-color: rgba(59,130,246,0.28); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.1); }
+
+/* Icon wrap in stat */
+.lp-stat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* ── FILTER SECTION ── */
+.lp-filter-dark  { background: rgba(255,255,255,0.03); border: 1px solid rgba(99,148,255,0.1); border-radius: 14px; padding: 16px 18px; }
+.lp-filter-light { background: rgba(239,246,255,0.65); border: 1px solid rgba(59,130,246,0.13); border-radius: 14px; padding: 16px 18px; }
+
+/* ── INPUTS ── */
+.lp-input {
+  display: block; width: 100%;
+  padding: 8px 12px; border-radius: 10px;
+  font-size: 13px; font-family: 'DM Sans', sans-serif;
+  outline: none; transition: all .2s ease;
+}
+.lp-input-dark {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(99,148,255,0.2);
+  color: #e2e8f5;
+}
+.lp-input-dark::placeholder { color: rgba(99,148,255,0.35); }
+.lp-input-dark:focus { border-color: rgba(96,165,250,0.5); box-shadow: 0 0 0 3px rgba(59,130,246,0.13); background: rgba(255,255,255,0.07); }
+.lp-input-dark option { background: #0d1526; color: #e2e8f5; }
+.lp-input-light {
+  background: white;
+  border: 1px solid rgba(59,130,246,0.18);
+  color: #1e3a5f;
+  box-shadow: 0 1px 3px rgba(59,130,246,0.05);
+}
+.lp-input-light::placeholder { color: rgba(37,99,235,0.32); }
+.lp-input-light:focus { border-color: rgba(37,99,235,0.45); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+
+.lp-search-icon-wrap { position: relative; }
+.lp-search-icon-wrap .lp-si { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.lp-search-icon-wrap input { padding-left: 34px !important; }
+.lp-search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 2px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color .15s; }
+
+/* ── LABELS ── */
+.lp-label-dark  { font-size: 11px; font-weight: 500; color: rgba(148,163,220,0.65); display: block; margin-bottom: 5px; letter-spacing: .02em; }
+.lp-label-light { font-size: 11px; font-weight: 500; color: #4b6ea8; display: block; margin-bottom: 5px; letter-spacing: .02em; }
+
+/* ── BUTTONS ── */
+.lp-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 10px; font-size: 13px;
+  font-weight: 500; font-family: 'DM Sans', sans-serif;
+  border: none; cursor: pointer; transition: all .2s ease; white-space: nowrap;
+}
+.lp-btn:active { transform: scale(0.97); }
+.lp-btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+.lp-btn-primary {
+  background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+  color: white;
+  box-shadow: 0 0 14px rgba(59,130,246,0.28);
+}
+.lp-btn-primary:hover:not(:disabled) { background: linear-gradient(135deg,#1e40af,#2563eb); box-shadow: 0 0 22px rgba(59,130,246,0.42); transform: translateY(-1px); }
+
+.lp-btn-ghost-dark  { background: rgba(255,255,255,0.05); border: 1px solid rgba(99,148,255,0.18) !important; color: rgba(148,163,220,0.8); }
+.lp-btn-ghost-dark:hover:not(:disabled)  { background: rgba(59,130,246,0.1); border-color: rgba(96,165,250,0.32) !important; color: #93c5fd; }
+.lp-btn-ghost-light { background: white; border: 1px solid rgba(59,130,246,0.18) !important; color: #4b6ea8; box-shadow: 0 1px 4px rgba(59,130,246,0.06); }
+.lp-btn-ghost-light:hover:not(:disabled) { background: rgba(219,234,254,0.5); border-color: rgba(59,130,246,0.32) !important; color: #1d4ed8; }
+
+.lp-btn-export {
+  background: linear-gradient(135deg,#065f46,#059669);
+  color: white;
+  box-shadow: 0 0 12px rgba(5,150,105,0.25);
+}
+.lp-btn-export:hover:not(:disabled) { background: linear-gradient(135deg,#064e3b,#047857); box-shadow: 0 0 20px rgba(5,150,105,0.4); transform: translateY(-1px); }
+
+/* ── STATUS BADGES ── */
+.lp-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+/* dark */
+.lp-b-new        { background: rgba(99,148,255,0.12); color: #93c5fd; border: 1px solid rgba(99,148,255,0.22); }
+.lp-b-entry      { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.22); }
+.lp-b-lapangan   { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.22); }
+.lp-b-sertifikat { background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.22); }
+.lp-b-closed     { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.22); }
+.lp-b-proforma   { background: rgba(250,204,21,0.12); color: #fbbf24; border: 1px solid rgba(250,204,21,0.22); }
+.lp-b-invoice    { background: rgba(234,179,8,0.12);  color: #facc15; border: 1px solid rgba(234,179,8,0.22); }
+.lp-b-selesai    { background: rgba(16,185,129,0.18); color: #10b981; border: 1px solid rgba(16,185,129,0.32); }
+.lp-b-default    { background: rgba(148,163,220,0.1); color: rgba(148,163,220,0.75); border: 1px solid rgba(148,163,220,0.2); }
+/* light override */
+.lp-light .lp-b-new        { background: rgba(219,234,254,0.7); color: #1d4ed8; border-color: rgba(59,130,246,0.2); }
+.lp-light .lp-b-entry      { background: rgba(209,250,229,0.7); color: #065f46; border-color: rgba(16,185,129,0.2); }
+.lp-light .lp-b-lapangan   { background: rgba(219,234,254,0.7); color: #1d4ed8; border-color: rgba(59,130,246,0.2); }
+.lp-light .lp-b-sertifikat { background: rgba(237,233,254,0.7); color: #5b21b6; border-color: rgba(124,58,237,0.2); }
+.lp-light .lp-b-closed     { background: rgba(255,237,213,0.7); color: #92400e; border-color: rgba(245,158,11,0.2); }
+.lp-light .lp-b-proforma   { background: rgba(254,249,195,0.7); color: #78350f; border-color: rgba(234,179,8,0.2); }
+.lp-light .lp-b-invoice    { background: rgba(254,243,199,0.7); color: #92400e; border-color: rgba(245,158,11,0.2); }
+.lp-light .lp-b-selesai    { background: rgba(209,250,229,0.8); color: #064e3b; border-color: rgba(16,185,129,0.28); }
+.lp-light .lp-b-default    { background: rgba(241,245,249,0.8); color: #475569; border-color: rgba(148,163,220,0.28); }
+
+/* ── TABLE ── */
+.lp-tbl-wrap { border-radius: 13px; overflow: hidden; }
+.lp-tbl-wrap-dark  { border: 1px solid rgba(99,148,255,0.1); }
+.lp-tbl-wrap-light { border: 1px solid rgba(59,130,246,0.12); }
+
+.lp-thead-dark  { background: rgba(5,10,22,0.8); }
+.lp-thead-light { background: rgba(235,244,255,0.9); }
+
+.lp-th-dark  { padding: 11px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(99,148,255,0.6); white-space: nowrap; }
+.lp-th-light { padding: 11px 14px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(37,99,235,0.55); white-space: nowrap; }
+
+.lp-tbody-dark  .lp-tr { border-bottom: 1px solid rgba(99,148,255,0.06); transition: background .15s; }
+.lp-tbody-dark  .lp-tr:hover { background: rgba(59,130,246,0.06); }
+.lp-tbody-dark  .lp-tr:last-child { border-bottom: none; }
+.lp-tbody-light .lp-tr { border-bottom: 1px solid rgba(59,130,246,0.07); transition: background .15s; }
+.lp-tbody-light .lp-tr:hover { background: rgba(219,234,254,0.35); }
+.lp-tbody-light .lp-tr:last-child { border-bottom: none; }
+
+.lp-td-dark  { padding: 10px 14px; font-size: 12.5px; color: rgba(203,213,240,0.82); white-space: nowrap; }
+.lp-td-light { padding: 10px 14px; font-size: 12.5px; color: #334e7a; white-space: nowrap; }
+
+/* sticky col */
+.lp-sticky-dark  { position: sticky; z-index: 10; background: rgb(8,13,26); border-right: 1px solid rgba(99,148,255,0.1); }
+.lp-sticky-light { position: sticky; z-index: 10; background: rgb(243,248,255); border-right: 1px solid rgba(59,130,246,0.1); }
+.lp-tbody-dark  .lp-tr:hover .lp-sticky-dark  { background: rgb(12,19,40); }
+.lp-tbody-light .lp-tr:hover .lp-sticky-light { background: rgb(234,244,255); }
+.lp-thead-dark  .lp-sticky-dark  { background: rgb(5,9,20); }
+.lp-thead-light .lp-sticky-light { background: rgb(231,241,255); }
+
+/* table scrollbar */
+.lp-tbl-scroll::-webkit-scrollbar { height: 5px; }
+.lp-tbl-scroll::-webkit-scrollbar-track { background: transparent; }
+.lp-tbl-scroll::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.22); border-radius: 10px; }
+
+/* ── MOBILE CARDS ── */
+.lp-mob-card-dark {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(99,148,255,0.12);
+  border-radius: 14px; padding: 14px;
+  margin-bottom: 10px;
+  transition: all .2s ease;
+}
+.lp-mob-card-dark:hover  { background: rgba(59,130,246,0.07); border-color: rgba(99,148,255,0.22); }
+.lp-mob-card-light {
+  background: white;
+  border: 1px solid rgba(59,130,246,0.1);
+  border-radius: 14px; padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.05);
+  transition: all .2s ease;
+}
+.lp-mob-card-light:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); }
+
+.lp-mob-field-label-dark  { font-size: 10px; font-weight: 500; color: rgba(99,148,255,0.5); margin-bottom: 2px; }
+.lp-mob-field-label-light { font-size: 10px; font-weight: 500; color: rgba(37,99,235,0.45); margin-bottom: 2px; }
+.lp-mob-field-val-dark  { font-size: 12.5px; font-weight: 500; color: rgba(203,213,240,0.85); }
+.lp-mob-field-val-light { font-size: 12.5px; font-weight: 500; color: #334e7a; }
+
+/* ── COL TOGGLE PANEL ── */
+.lp-col-panel-dark  {
+  background: rgba(7,11,24,0.97); border: 1px solid rgba(99,148,255,0.15);
+  border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 100;
+  width: 240px; max-height: 340px; overflow-y: auto; padding: 12px;
+}
+.lp-col-panel-light {
+  background: rgba(248,251,255,0.99); border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 14px; box-shadow: 0 12px 40px rgba(37,99,235,0.1);
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 100;
+  width: 240px; max-height: 340px; overflow-y: auto; padding: 12px;
+}
+.lp-col-panel-dark::-webkit-scrollbar,
+.lp-col-panel-light::-webkit-scrollbar { width: 3px; }
+.lp-col-panel-dark::-webkit-scrollbar-thumb  { background: rgba(59,130,246,0.25); border-radius:6px; }
+.lp-col-panel-light::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.2);  border-radius:6px; }
+.lp-col-panel-enter { animation: lp-drop-in .2s cubic-bezier(0.22,1,0.36,1) forwards; }
+@keyframes lp-drop-in { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+/* ── PAGINATION ── */
+.lp-pg-btn {
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  border-radius: 9px; cursor: pointer; transition: all .18s ease; font-size: 13px; font-family: 'DM Sans', sans-serif; border: none;
+}
+.lp-pg-btn:disabled { opacity: .3; cursor: not-allowed; }
+.lp-pg-btn-dark  { background: rgba(255,255,255,0.04); border: 1px solid rgba(99,148,255,0.14) !important; color: rgba(148,163,220,0.7); }
+.lp-pg-btn-dark:not(:disabled):hover  { background: rgba(59,130,246,0.1); border-color: rgba(96,165,250,0.28) !important; color: #93c5fd; }
+.lp-pg-btn-dark.lp-pg-active  { background: rgba(37,99,235,0.22); border-color: rgba(59,130,246,0.38) !important; color: #93c5fd; font-weight: 600; }
+.lp-pg-btn-light { background: white; border: 1px solid rgba(59,130,246,0.14) !important; color: #4b6ea8; box-shadow: 0 1px 3px rgba(59,130,246,0.05); }
+.lp-pg-btn-light:not(:disabled):hover { background: rgba(219,234,254,0.5); border-color: rgba(59,130,246,0.28) !important; color: #1d4ed8; }
+.lp-pg-btn-light.lp-pg-active { background: rgba(219,234,254,0.8); border-color: rgba(37,99,235,0.3) !important; color: #1d4ed8; font-weight: 600; }
+
+/* ── LOADING SPINNER ── */
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+.lp-spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(59,130,246,0.15); border-top-color: #3b82f6; animation: lp-spin .75s linear infinite; }
+
+/* ── TEXT HELPERS ── */
+.lp-text-h-dark   { color: #e2e8f5; }
+.lp-text-h-light  { color: #1e3a5f; }
+.lp-text-m-dark   { color: rgba(99,148,255,0.55); }
+.lp-text-m-light  { color: rgba(37,99,235,0.5); }
+.lp-text-s-dark   { color: rgba(148,163,220,0.72); }
+.lp-text-s-light  { color: #4b6ea8; }
+
+/* ── DIVIDER ── */
+.lp-div-dark  { height: 1px; background: linear-gradient(90deg,rgba(99,148,255,0.18),transparent); margin: 16px 0; }
+.lp-div-light { height: 1px; background: linear-gradient(90deg,rgba(59,130,246,0.13),transparent); margin: 16px 0; }
+
+/* ── EMPTY STATE ── */
+.lp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 0; gap: 12px; }
+
+/* ── FILTER TAG ── */
+.lp-tag-dark  { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; border-radius:20px; font-size:11.5px; font-weight:500; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.22); color:#93c5fd; }
+.lp-tag-light { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; border-radius:20px; font-size:11.5px; font-weight:500; background:rgba(219,234,254,0.7); border:1px solid rgba(59,130,246,0.2); color:#1d4ed8; }
+.lp-tag-close { background:none; border:none; cursor:pointer; display:flex; align-items:center; padding:0; opacity:.7; transition:opacity .15s; }
+.lp-tag-close:hover { opacity:1; }
+`;
+
+/* ═══════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════ */
+const ALL_COLS = [
+  { key:"pelanggan",                           label:"Nama Pelanggan",               fixed:true, w:185, show:true  },
+  { key:"portofolio",                          label:"Portofolio",                   fixed:true, w:110, show:true  },
+  { key:"statusOrder",                         label:"Status",                       fixed:true, w:145, show:true  },
+  { key:"nomorOrder",                          label:"Nomor Order",                              w:150, show:true  },
+  { key:"tanggalOrder",                        label:"Tgl Order",                                w:120, show:true  },
+  { key:"tanggalStatusOrder",                  label:"Tgl Status",                               w:120, show:true  },
+  { key:"tanggalPekerjaan",                    label:"Tgl Pekerjaan",                            w:120, show:true  },
+  { key:"jenisPekerjaan",                      label:"Jenis Pekerjaan",                          w:160, show:true  },
+  { key:"lokasiPekerjaan",                     label:"Lokasi",                                   w:160, show:false },
+  { key:"tanggalSerahOrderKeCs",               label:"Tgl Serah ke CS",                          w:130, show:false },
+  { key:"proformaSerahKeOps",                  label:"Proforma → Ops",                           w:130, show:false },
+  { key:"proformaSerahKeDukbis",               label:"Proforma → Dukbis",                        w:135, show:false },
+  { key:"proformaBySistem",                    label:"Proforma By Sistem",                        w:140, show:false },
+  { key:"noSertifikatPM06",                    label:"No. Sert. PM06",                           w:130, show:false },
+  { key:"noSertifikat",                        label:"No. Sertifikat",                            w:130, show:true  },
+  { key:"keteranganSertifikatPM06",            label:"Ket. Sert. PM06",                          w:155, show:false },
+  { key:"jenisSerifikat",                      label:"Jenis Sertifikat",                          w:140, show:false },
+  { key:"noSiSpk",                             label:"No SI/SPK",                                w:120, show:false },
+  { key:"namaTongkang",                        label:"Nama Tongkang",                            w:140, show:false },
+  { key:"estimasiTonase",                      label:"Est. Tonase",                              w:120, show:true  },
+  { key:"tonaseDS",                            label:"Tonase DS",                                w:110, show:true  },
+  { key:"nilaiProforma",                       label:"Nilai Proforma",                           w:145, show:true  },
+  { key:"nilaiInvoice",                        label:"Nilai Invoice",                            w:140, show:true  },
+  { key:"nomorInvoice",                        label:"No. Invoice",                              w:130, show:false },
+  { key:"fakturPajak",                         label:"Faktur Pajak",                             w:120, show:false },
+  { key:"tanggalPengirimanInvoice",            label:"Tgl Kirim Invoice",                        w:140, show:false },
+  { key:"tanggalPengirimanFaktur",             label:"Tgl Kirim Faktur",                         w:135, show:false },
+  { key:"distribusiSertifikatPengirim",        label:"Dist. Sert. (Pengirim)",                   w:175, show:false },
+  { key:"distribusiSertifikatPengirimTanggal", label:"Tgl Dist. (Pengirim)",                     w:145, show:false },
+  { key:"distribusiSertifikatPenerima",        label:"Dist. Sert. (Penerima)",                   w:175, show:false },
+  { key:"distribusiSertifikatPenerimaTanggal", label:"Tgl Diterima Sert.",                       w:140, show:false },
+  { key:"createdAt",                           label:"Dibuat Pada",                              w:120, show:false },
+  { key:"updatedAt",                           label:"Diperbarui",                               w:120, show:false },
+];
+
+const PORTO_LIST  = ["BATUBARA","KSP","PIK","INDUSTRI","HMPM","AEBT","MINERAL","HALAL","LABORATORIUM","SERCO","LSI"];
+const STATUS_LIST = ["New Order","Entry","Diproses - Lapangan","Diproses - Sertifikat","Closed Order","Penerbitan Proforma","Invoice","Selesai"];
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+const parseTs = (ts) => {
+  if (!ts) return null;
+  if (ts?.seconds) return new Date(ts.seconds * 1000);
+  if (ts instanceof Date && !isNaN(ts)) return ts;
+  const p = new Date(ts);
+  return isNaN(p) ? null : p;
+};
+
+const formatDate = (ts) => {
+  const d = parseTs(ts);
+  if (d) return d.toLocaleDateString("id-ID", { day:"2-digit", month:"2-digit", year:"numeric" });
+  if (typeof ts === "string" && ts.includes("/")) {
+    const parts = ts.split("/");
+    if (parts.length === 3) { const p = new Date(parts[2], parts[1]-1, parts[0]); if (!isNaN(p)) return p.toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+  }
+  return "-";
+};
+
+const formatCurrency = (v) => { const n = Number(v); return isNaN(n) ? "Rp -" : `Rp ${n.toLocaleString("id-ID")}`; };
+
+const BADGE_MAP = {
+  "New Order":"lp-b-new","Entry":"lp-b-entry","Diproses - Lapangan":"lp-b-lapangan",
+  "Diproses - Sertifikat":"lp-b-sertifikat","Closed Order":"lp-b-closed",
+  "Penerbitan Proforma":"lp-b-proforma","Invoice":"lp-b-invoice","Selesai":"lp-b-selesai",
+};
+const getBadge = (s) => `lp-badge ${BADGE_MAP[s] || "lp-b-default"}`;
+
+const STAT_COLORS = ["#60a5fa","#a78bfa","#fbbf24","#34d399"];
+const STAT_BG_D   = ["rgba(96,165,250,0.12)","rgba(167,139,250,0.12)","rgba(251,191,36,0.12)","rgba(52,211,153,0.12)"];
+const STAT_BG_L   = ["rgba(219,234,254,0.5)","rgba(237,233,254,0.5)","rgba(254,249,195,0.5)","rgba(209,250,229,0.5)"];
+
+/* ═══════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════ */
+export default function LaporanOrders() {
+  const { isDark } = useTheme();
+  const navigate   = useNavigate();
+  const colPanelRef = useRef(null);
+
+  /* ── STATE ── */
+  const [orders, setOrders]             = useState([]);
+  const [filtered, setFiltered]         = useState([]);
+  const [startDate, setStartDate]       = useState("");
+  const [endDate, setEndDate]           = useState("");
+  const [portoFilter, setPortoFilter]   = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [mounted, setMounted] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [paginatedOrders, setPaginatedOrders] = useState([]);
+  const [search, setSearch]             = useState("");
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [mounted, setMounted]           = useState(false);
+  const [isMobile, setIsMobile]         = useState(false);
+  const [viewMode, setViewMode]         = useState("table"); // "table" | "cards"
+  const [showColPanel, setShowColPanel] = useState(false);
+  const [colVis, setColVis]             = useState(
+    () => ALL_COLS.reduce((a,c) => ({ ...a, [c.key]: c.show }), {})
+  );
+  const [page, setPage]       = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
-  // Get user data from localStorage
-  const userData = JSON.parse(localStorage.getItem("user")) || {};
-  const userPeran = userData.peran || "";
+  const userData   = useMemo(() => JSON.parse(localStorage.getItem("user")) || {}, []);
+  const userPeran  = userData.peran  || "";
   const userBidang = userData.bidang || "";
 
+  const d  = isDark;
+  const T  = (dk,lk) => d ? dk : lk;
+
+  /* ── RESPONSIVE ── */
   useEffect(() => {
-    if (!userPeran) {
-      alert("Anda tidak memiliki akses!");
-      navigate("/");
-      return;
-    } 
+    const check = () => { const m = window.innerWidth < 768; setIsMobile(m); if (m) setViewMode("cards"); };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  /* ── INIT ── */
+  useEffect(() => {
+    if (!userPeran) { alert("Anda tidak memiliki akses!"); navigate("/"); return; }
     setMounted(true);
     fetchOrders();
-
-    return () => {
-      setMounted(false);
-    };
   }, [userPeran]);
 
-  // Update pagination whenever filtered orders change
+  /* ── CLOSE COL PANEL ON OUTSIDE CLICK ── */
   useEffect(() => {
-    setTotalPages(Math.ceil(filteredOrders.length / itemsPerPage));
-    setCurrentPage(1); // Reset to first page when filters change
-    updatePaginatedData(1);
-  }, [filteredOrders, itemsPerPage]);
+    const handler = (e) => { if (colPanelRef.current && !colPanelRef.current.contains(e.target)) setShowColPanel(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-  // Update paginated data when page changes
-  useEffect(() => {
-    updatePaginatedData(currentPage);
-  }, [currentPage]);
-
-  // Function to update paginated data
-  const updatePaginatedData = (page) => {
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setPaginatedOrders(filteredOrders.slice(startIndex, endIndex));
-  };
-
-  // Format date function
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "-";
-    // Tambahkan validasi tipe data timestamp sebelum memproses
-    let date;
-    if (timestamp.seconds) {
-      date = new Date(timestamp.seconds * 1000);
-    } else if (typeof timestamp === "string" || typeof timestamp === "number") {
-       // Coba parse sebagai string/number (misal ISO string atau milliseconds)
-       try {
-         const parsedDate = new Date(timestamp);
-         // Cek apakah hasil parsing valid
-         if (!isNaN(parsedDate.getTime())) {
-           date = parsedDate;
-         }
-       } catch (error) {
-         // Abaikan error jika format tidak bisa diparse
-       }
-    } else if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
-        // Jika sudah berupa objek Date yang valid
-        date = timestamp;
-    }
-
-    // Jika date berhasil didapatkan, format ke id-ID
-    if (date) {
-        try {
-            return date.toLocaleDateString("id-ID", {
-                day: '2-digit', month: '2-digit', year: 'numeric'
-            });
-        } catch (e) {
-            console.warn("Error formatting date:", timestamp, e);
-            return "-"; // Fallback jika toLocaleDateString error
-        }
-    }
-
-    // Fallback jika timestamp tidak bisa diproses
-    // Coba parse sebagai format DD/MM/YYYY (jika data lama mungkin seperti ini)
-    if (typeof timestamp === 'string' && timestamp.includes('/')) {
-        try {
-            const parts = timestamp.split('/');
-            if (parts.length === 3) {
-                 // Asumsikan format DD/MM/YYYY
-                 const formattedDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                 if (!isNaN(formattedDate.getTime())) {
-                    return formattedDate.toLocaleDateString("id-ID", {
-                         day: '2-digit', month: '2-digit', year: 'numeric'
-                    });
-                 }
-            }
-        } catch (e) {
-             // Abaikan error parsing
-        }
-    }
-
-    console.warn("Unparseable/invalid date timestamp:", timestamp);
-    return "-"; // Default fallback
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    const number = Number(amount);
-    if (isNaN(number)) return "Rp -"; // Handle non-numeric input gracefully
-    return `Rp ${number.toLocaleString("id-ID")}`;
-  };
-
-  // Fetch orders from Firestore
+  /* ── FETCH ── */
   const fetchOrders = async () => {
-    setLoading(true);
-    setError(null);
-
+    setLoading(true); setError(null);
     try {
-      const ordersRef = collection(db, "orders");
-      let q = null;
+      const ref = collection(db, "orders");
+      let q;
+      if (userPeran === "admin portofolio")
+        q = query(ref, where("portofolio","==",userBidang), orderBy("createdAt","desc"));
+      else if (["customer service","admin keuangan","koordinator"].includes(userPeran))
+        q = query(ref, orderBy("createdAt","desc"));
+      else { setError("Anda tidak memiliki akses ke laporan ini."); setLoading(false); return; }
 
-      // Tentukan query berdasarkan peran user
-      if (userPeran === "admin portofolio") {
-        q = query(ordersRef, where("portofolio", "==", userBidang), orderBy("createdAt", "desc")); // Konsisten order by createdAt
-      } else if (["customer service", "admin keuangan", "koordinator"].includes(userPeran)) {
-        q = query(ordersRef, orderBy("createdAt", "desc")); // Konsisten order by createdAt
-      } else {
-        setError("Anda tidak memiliki akses ke laporan ini.");
-        setLoading(false);
-        return;
-      }
-
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => {
-        const order = doc.data();
-
-        // Pastikan nilai date/timestamp adalah objek Date atau null/undefined sebelum format
-        const ensureValidDateInput = (ts) => {
-           if (!ts) return null;
-           if (ts.seconds) return new Date(ts.seconds * 1000); // Firestore Timestamp
-           if (ts instanceof Date) return ts; // Sudah Date object
-           if (typeof ts === 'string' || typeof ts === 'number') {
-               const parsed = new Date(ts);
-               return isNaN(parsed.getTime()) ? null : parsed; // Cek validitas hasil parse
-           }
-           return null; // Format tidak dikenali
-        }
-
+      const snap = await getDocs(q);
+      const data = snap.docs.map(doc => {
+        const o = doc.data();
+        const d = (f) => formatDate(parseTs(o[f]));
         return {
-          ...order,
-          id: doc.id,
-          // Format tanggal setelah mengambil data, gunakan input Date yang valid
-          tanggalStatusOrder: formatDate(ensureValidDateInput(order.tanggalStatusOrder)),
-          tanggalSerahOrderKeCs: formatDate(ensureValidDateInput(order.tanggalSerahOrderKeCs)),
-          tanggalOrder: formatDate(ensureValidDateInput(order.tanggalOrder)),
-          tanggalPekerjaan: formatDate(ensureValidDateInput(order.tanggalPekerjaan)),
-          proformaSerahKeOps: formatDate(ensureValidDateInput(order.proformaSerahKeOps)),
-          proformaSerahKeDukbis: formatDate(ensureValidDateInput(order.proformaSerahKeDukbis)),
-          proformaBySistem: formatDate(ensureValidDateInput(order.proformaBySistem)),
-          tanggalPengirimanInvoice: formatDate(ensureValidDateInput(order.tanggalPengirimanInvoice)),
-          tanggalPengirimanFaktur: formatDate(ensureValidDateInput(order.tanggalPengirimanFaktur)),
-          distribusiSertifikatPengirimTanggal: formatDate(ensureValidDateInput(order.distribusiSertifikatPengirimTanggal)),
-          distribusiSertifikatPenerimaTanggal: formatDate(ensureValidDateInput(order.distribusiSertifikatPenerimaTanggal)),
-          createdAt: formatDate(ensureValidDateInput(order.createdAt)), // Format createdAt
-          updatedAt: formatDate(ensureValidDateInput(order.updatedAt)), // Format updatedAt
-          // Format currency
-          nilaiProforma: formatCurrency(order.nilaiProforma),
-          nilaiInvoice: formatCurrency(order.nilaiInvoice),
-          // Format number or return '-'
-          tonaseDS: order.tonaseDS ? Number(order.tonaseDS).toLocaleString("id-ID") : "-",
-          estimasiTonase: order.estimasiTonase ? Number(order.estimasiTonase).toLocaleString("id-ID") : "-",
-          // Pastikan field lain ada atau beri default value
-          pelanggan: order.pelanggan || "-",
-          portofolio: order.portofolio || "-",
-          statusOrder: order.statusOrder || "-",
-          // ... tambahkan default untuk field lain jika perlu
+          ...o, id: doc.id,
+          tanggalStatusOrder: d("tanggalStatusOrder"),
+          tanggalSerahOrderKeCs: d("tanggalSerahOrderKeCs"),
+          tanggalOrder: d("tanggalOrder"),
+          tanggalPekerjaan: d("tanggalPekerjaan"),
+          proformaSerahKeOps: d("proformaSerahKeOps"),
+          proformaSerahKeDukbis: d("proformaSerahKeDukbis"),
+          proformaBySistem: d("proformaBySistem"),
+          tanggalPengirimanInvoice: d("tanggalPengirimanInvoice"),
+          tanggalPengirimanFaktur: d("tanggalPengirimanFaktur"),
+          distribusiSertifikatPengirimTanggal: d("distribusiSertifikatPengirimTanggal"),
+          distribusiSertifikatPenerimaTanggal: d("distribusiSertifikatPenerimaTanggal"),
+          createdAt: d("createdAt"),
+          updatedAt: d("updatedAt"),
+          nilaiProforma: formatCurrency(o.nilaiProforma),
+          nilaiInvoice:  formatCurrency(o.nilaiInvoice),
+          tonaseDS:      o.tonaseDS       ? Number(o.tonaseDS).toLocaleString("id-ID")       : "-",
+          estimasiTonase:o.estimasiTonase ? Number(o.estimasiTonase).toLocaleString("id-ID") : "-",
+          pelanggan: o.pelanggan  || "-",
+          portofolio: o.portofolio || "-",
+          statusOrder: o.statusOrder || "-",
         };
       });
-
-      setOrders(data);
-      setFilteredOrders(data);
-    } catch (error) {
-      // console.error("Error fetching orders:", error);
-      setError(`Terjadi kesalahan saat mengambil data: ${error.message}`);
-    }
+      setOrders(data); setFiltered(data);
+    } catch (e) { setError(`Terjadi kesalahan: ${e.message}`); }
     setLoading(false);
   };
 
-  const handleFilter = () => {
-    let filtered = [...orders];
-
-    // Filter by date range (menggunakan tanggal asli sebelum diformat jika memungkinkan, atau parse dari string)
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      // Setel waktu ke awal hari
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(endDate);
-       // Setel waktu ke akhir hari untuk inklusif
-      end.setHours(23, 59, 59, 999);
-
-      filtered = filtered.filter(order => {
-        // Coba parse tanggal 'createdAt' yang sudah diformat (DD/MM/YYYY)
-        if (!order.createdAt || order.createdAt === "-") return false;
-
-        const parts = order.createdAt.split('/');
-        if (parts.length !== 3) return false; // Format tidak valid
-
-        // Buat objek Date: new Date(year, monthIndex, day)
-        const orderDate = new Date(parts[2], parts[1] - 1, parts[0]);
-         orderDate.setHours(0,0,0,0); // Setel ke awal hari untuk perbandingan
-
-        // Cek apakah tanggal valid dan berada dalam rentang
-        return !isNaN(orderDate.getTime()) && orderDate >= start && orderDate <= end;
+  /* ── FILTER & SEARCH ── */
+  const applyAll = (base = orders, q = search, sd = startDate, ed = endDate, pf = portoFilter, sf = statusFilter) => {
+    let f = [...base];
+    if (sd && ed) {
+      const s = new Date(sd); s.setHours(0,0,0,0);
+      const e = new Date(ed); e.setHours(23,59,59,999);
+      f = f.filter(o => {
+        if (!o.createdAt || o.createdAt === "-") return false;
+        const p = o.createdAt.split("/");
+        if (p.length !== 3) return false;
+        const od = new Date(p[2], p[1]-1, p[0]); od.setHours(0,0,0,0);
+        return !isNaN(od) && od >= s && od <= e;
       });
     }
-
-    // Filter by portofolio (case-insensitive)
-    if (portofolioFilter && userPeran !== "admin portofolio") {
-      filtered = filtered.filter(order =>
-        order.portofolio?.toLowerCase() === portofolioFilter.toLowerCase()
-      );
+    if (pf && userPeran !== "admin portofolio") f = f.filter(o => o.portofolio?.toLowerCase() === pf.toLowerCase());
+    if (sf)  f = f.filter(o => o.statusOrder === sf);
+    if (q.trim()) {
+      const lq = q.toLowerCase();
+      f = f.filter(o => o.pelanggan?.toLowerCase().includes(lq) || o.nomorOrder?.toLowerCase().includes(lq) || o.portofolio?.toLowerCase().includes(lq));
     }
-
-    // Filter by status (case-sensitive, sesuai dropdown)
-    if (statusFilter) {
-      filtered = filtered.filter(order =>
-        order.statusOrder === statusFilter
-      );
-    }
-
-    setFilteredOrders(filtered);
+    setFiltered(f); setPage(1);
   };
 
-  const resetFilters = () => {
-    setStartDate("");
-    setEndDate("");
-    setPortofolioFilter("");
-    setStatusFilter("");
-    setFilteredOrders(orders); // Kembali ke data asli (yang sudah diformat)
-  };
+  const handleFilter   = () => applyAll();
+  const handleReset    = () => { setStartDate(""); setEndDate(""); setPortoFilter(""); setStatusFilter(""); setSearch(""); setFiltered(orders); setPage(1); };
+  const handleSearch   = (v) => { setSearch(v); applyAll(orders, v); };
 
-  // Prepare data for export (opsional: unformat jika perlu)
-  const prepareDataForExport = (data) => {
-    return data.map(item => {
-      const exportItem = { ...item };
-
-      // Contoh: Hapus format dari nilaiProforma
-      if (exportItem.nilaiProforma && typeof exportItem.nilaiProforma === 'string') {
-         // Hapus 'Rp ', spasi, dan titik ribuan (jika pakai titik)
-         // Jika pakai koma sebagai ribuan (id-ID), ganti koma
-        exportItem.nilaiProforma = exportItem.nilaiProforma.replace(/[Rp.\s]/g, '').replace(/,/g, '');
-      }
-      if (exportItem.nilaiInvoice && typeof exportItem.nilaiInvoice === 'string') {
-         // Hapus 'Rp ', spasi, dan titik ribuan (jika pakai titik)
-         // Jika pakai koma sebagai ribuan (id-ID), ganti koma
-        exportItem.nilaiInvoice = exportItem.nilaiInvoice.replace(/[Rp.\s]/g, '').replace(/,/g, '');
-      }
-       if (exportItem.tonaseDS && typeof exportItem.tonaseDS === 'string') {
-            exportItem.tonaseDS = exportItem.tonaseDS.replace(/\./g, ''); // Hapus titik ribuan
-       }
-       if (exportItem.estimasiTonase && typeof exportItem.estimasiTonase === 'string') {
-           exportItem.estimasiTonase = exportItem.estimasiTonase.replace(/\./g, ''); // Hapus titik ribuan
-       }
-
-      // Anda bisa menambahkan un-formatting untuk tanggal jika ingin format ISO di Excel
-      // Tapi biasanya Excel cukup pintar mengenali format DD/MM/YYYY
-
-      return exportItem;
-    });
-  };
-
+  /* ── EXPORT ── */
   const handleExport = () => {
-    if (filteredOrders.length === 0) {
-      alert("Tidak ada data untuk diekspor.");
-      return;
-    }
-    const exportData = prepareDataForExport(filteredOrders);
-    const fileName = `Laporan_Orders_${new Date().toISOString().split('T')[0]}`;
-    exportToExcel(exportData, fileName, allColumns); // Pass columns for header order
+    if (!filtered.length) { alert("Tidak ada data untuk diekspor."); return; }
+    const clean = filtered.map(item => {
+      const x = {...item};
+      ["nilaiProforma","nilaiInvoice"].forEach(k => { if (typeof x[k]==="string") x[k]=x[k].replace(/[Rp.\s]/g,"").replace(/,/g,""); });
+      ["tonaseDS","estimasiTonase"].forEach(k => { if (typeof x[k]==="string") x[k]=x[k].replace(/\./g,""); });
+      return x;
+    });
+    exportToExcel(clean, `Laporan_Orders_${new Date().toISOString().split("T")[0]}`, ALL_COLS);
   };
 
-  // Pagination handlers
-  const goToPage = (page) => {
-    if (page < 1) page = 1;
-    if (page > totalPages) page = totalPages;
-    setCurrentPage(page);
-  };
+  /* ── STATS ── */
+  const stats = useMemo(() => [
+    { label:"Total Order",  val: filtered.length,                                                                              icon:<Package  style={{width:16,height:16}}/> },
+    { label:"Diproses",     val: filtered.filter(o=>["Diproses - Lapangan","Diproses - Sertifikat"].includes(o.statusOrder)).length, icon:<TrendingUp style={{width:16,height:16}}/> },
+    { label:"Invoice",      val: filtered.filter(o=>o.statusOrder==="Invoice").length,                                         icon:<Clock    style={{width:16,height:16}}/> },
+    { label:"Selesai",      val: filtered.filter(o=>o.statusOrder==="Selesai").length,                                         icon:<CheckCircle2 style={{width:16,height:16}}/> },
+  ], [filtered]);
 
-  const goToFirstPage = () => goToPage(1);
-  const goToLastPage = () => goToPage(totalPages);
-  const goToPreviousPage = () => goToPage(currentPage - 1);
-  const goToNextPage = () => goToPage(currentPage + 1);
+  /* ── PAGINATION ── */
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paginated   = filtered.slice((page-1)*perPage, page*perPage);
+  const goTo        = (p) => setPage(Math.max(1, Math.min(p, totalPages)));
 
-  const handleItemsPerPageChange = (e) => {
-    setItemsPerPage(Number(e.target.value));
-  };
+  /* ── VISIBLE COLS ── */
+  const visCols = useMemo(() => ALL_COLS.filter(c => colVis[c.key]), [colVis]);
 
-  // Define all columns based on the Firebase schema
-  // PERBAIKAN: Tambahkan properti 'width' (opsional) untuk kolom sticky
-  const allColumns = [
-    { key: "pelanggan", label: "Nama Pelanggan", fixed: true, width: "180px" }, // Lebar tetap untuk kolom pertama
-    { key: "portofolio", label: "Portofolio", fixed: true, width: "120px" },   // Lebar tetap untuk kolom kedua
-    { key: "statusOrder", label: "Status Order", fixed: true, width: "120px" }, // Lebar tetap untuk kolom ketiga
-    { key: "tanggalStatusOrder", label: "Tanggal Status Order" },
-    { key: "nomorOrder", label: "Nomor Order" },
-    { key: "tanggalSerahOrderKeCs", label: "Tanggal Penyerahan Order ke CS" },
-    { key: "tanggalOrder", label: "Tanggal Order" },
-    { key: "tanggalPekerjaan", label: "Tanggal Pekerjaan" },
-    { key: "proformaSerahKeOps", label: "Proforma Serah Ke Ops" },
-    { key: "proformaSerahKeDukbis", label: "Proforma Serah Ke Dukbis" },
-    { key: "proformaBySistem", label: "Proforma By Sistem" },
-    { key: "jenisPekerjaan", label: "Jenis Pekerjaan" },
-    { key: "lokasiPekerjaan", label: "Lokasi Pekerjaan" },
-    { key: "noSertifikatPM06", label: "No. Sertifikat PM06" },
-    { key: "noSertifikat", label: "No. Sertifikat" },
-    { key: "keteranganSertifikatPM06", label: "Keterangan Sertifikat PM06" },
-    { key: "jenisSerifikat", label: "Jenis Sertifikat" },
-    { key: "noSiSpk", label: "No SI/SPK" },
-    { key: "namaTongkang", label: "Nama Tongkang" },
-    { key: "estimasiTonase", label: "Estimasi Kuantitas/Tonase" },
-    { key: "tonaseDS", label: "Tonase DS" },
-    { key: "nilaiProforma", label: "Nilai Proforma" },
-    { key: "nilaiInvoice", label: "Nilai Invoice (Fee)" },
-    { key: "nomorInvoice", label: "Nomor Invoice" },
-    { key: "fakturPajak", label: "Faktur Pajak" },
-    { key: "tanggalPengirimanInvoice", label: "Tanggal Pengiriman Invoice" },
-    { key: "tanggalPengirimanFaktur", label: "Tanggal Pengiriman Faktur" },
-    { key: "distribusiSertifikatPengirim", label: "Distribusi Sertifikat Pengirim" },
-    { key: "distribusiSertifikatPengirimTanggal", label: "Tanggal Distribusi Sertifikat (Pengirim)" },
-    { key: "distribusiSertifikatPenerima", label: "Distribusi Sertifikat Penerima" },
-    { key: "distribusiSertifikatPenerimaTanggal", label: "Tanggal Diterima Sertifikat" },
-    { key: "createdAt", label: "Dibuat Pada" },
-    { key: "updatedAt", label: "Diperbarui Pada" },
-  ];
+  /* ── STICKY OFFSETS ── */
+  const stickyOff = useMemo(() => {
+    let off = 0;
+    return visCols.filter(c=>c.fixed).reduce((acc,c) => { acc[c.key]=off; off+=c.w||150; return acc; }, {});
+  }, [visCols]);
 
-  // List of portofolios for filter dropdown
-  const portofolioList = ["BATUBARA", "KSP", "PIK", "INDUSTRI", "HMPM", "AEBT", "MINERAL", "HALAL", "LABORATORIUM", "SERCO", "LSI"];
+  /* ── ACTIVE FILTER TAGS ── */
+  const activeTags = useMemo(() => {
+    const t = [];
+    if (startDate && endDate) t.push({ key:"date", label:`${startDate} → ${endDate}`, clear:()=>{setStartDate("");setEndDate("");applyAll(orders,search,"","",portoFilter,statusFilter);} });
+    if (portoFilter) t.push({ key:"porto", label:`Porto: ${portoFilter.toUpperCase()}`, clear:()=>{setPortoFilter("");applyAll(orders,search,startDate,endDate,"",statusFilter);} });
+    if (statusFilter) t.push({ key:"status", label:`Status: ${statusFilter}`, clear:()=>{setStatusFilter("");applyAll(orders,search,startDate,endDate,portoFilter,"");} });
+    if (search) t.push({ key:"search", label:`Cari: "${search}"`, clear:()=>{setSearch("");applyAll(orders,"",startDate,endDate,portoFilter,statusFilter);} });
+    return t;
+  }, [startDate,endDate,portoFilter,statusFilter,search]);
 
-  // Status options for filter dropdown
-  const statusOptions = [ "New Order", "Entry", "Diproses - Lapangan", "Diproses - Sertifikat", "Closed Order", "Penerbitan Proforma", "Invoice", "Selesai", ];
-
-  // Get status badge styling
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Entry":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200";
-      case "Diproses - Lapangan":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200";
-      case "Invoice":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200";
-      case "New Order":
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200";
-      case "Selesai":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-800 border border-teal-200";
-      case "Diproses - Sertifikat":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200";
-      case "Closed Order":
-         return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-200";
-      default:
-        return "px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 border border-red-200";
-    }
-  };
-
-  // Hitung offset kiri untuk setiap kolom sticky
-  // Perhatikan urutan di allColumns
-  const stickyOffsets = allColumns.reduce((acc, col, index) => {
-      if (col.fixed) {
-          const previousWidth = index > 0 && allColumns[index-1].fixed ? acc[allColumns[index-1].key] : 0;
-          const previousElementWidth = index > 0 && allColumns[index-1].fixed ? parseFloat(allColumns[index-1].width) || 150 : 0; // Default width jika tidak diset
-          acc[col.key] = previousWidth + previousElementWidth;
-      }
-      return acc;
-  }, { firstCol: 0 }); // Offset kolom pertama adalah 0
-
+  /* ══════════════════════════════
+     RENDER
+  ══════════════════════════════ */
   return (
-    <div className={`p-6 transition-all duration-500 ${
-      mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-    }`}>
-      <div className="max-w-full mx-auto bg-white rounded-xl shadow-md overflow-hidden mb-6">
-        <div className="h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 animate-gradient-x"></div>
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            <FileText className="w-6 h-6 text-blue-600 mr-2" />
-            <h2 className="text-xl font-bold text-gray-800">Laporan Order</h2>
-          </div>
+    <>
+      <style>{STYLES}</style>
+      <div
+        className={`lp-root ${d?"":"lp-light"} ${mounted?"lp-mounted":"opacity-0"}`}
+        style={{ padding: isMobile ? "12px" : "24px", transition:"all .4s ease", minHeight:"100%" }}
+      >
+        <div className={T("lp-card-dark","lp-card-light")} style={{overflow:"hidden"}}>
+          <div className="lp-topbar"/>
 
-          {/* Filter Section */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-6">
-            <h3 className="text-sm font-medium text-blue-800 mb-3">Filter Laporan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                <input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
-                <input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                   min={startDate} // Optional: end date tidak bisa sebelum start date
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+          <div style={{padding: isMobile?"16px":"24px 28px"}}>
 
-              {userPeran !== "admin portofolio" && (
+            {/* ── PAGE HEADER ── */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:40,height:40,borderRadius:12,flexShrink:0,background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",boxShadow:"0 0 18px rgba(59,130,246,0.35)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <FileText style={{width:18,height:18,color:"white"}}/>
+                </div>
                 <div>
-                  <label htmlFor="portofolioFilter" className="block text-sm font-medium text-gray-700 mb-1">Portofolio</label>
-                  <select
-                    id="portofolioFilter"
-                    value={portofolioFilter}
-                    onChange={(e) => setPortofolioFilter(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Semua Portofolio</option>
-                    {portofolioList.map(p => (
-                      <option key={p} value={p.toLowerCase()}>{p}</option> // Value sebaiknya lowercase konsisten
-                    ))}
-                  </select>
+                  <h1 className={T("lp-text-h-dark","lp-text-h-light")} style={{fontSize:18,fontWeight:700,lineHeight:1.2}}>Laporan Order</h1>
+                  <p className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:12,marginTop:2}}>
+                    {orders.length.toLocaleString("id-ID")} total data tersedia
+                  </p>
                 </div>
-              )}
-
-              <div>
-                <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">Status Order</label>
-                <select
-                  id="statusFilter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Semua Status</option>
-                  {statusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
               </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 items-center">
-              <button
-                onClick={handleFilter}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Terapkan Filter
-              </button>
-              <button
-                onClick={resetFilters}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-              >
-                Reset Filter
-              </button>
-              {userPeran !== "koordinator" && (
-                <button
-                  onClick={handleExport}
-                  disabled={filteredOrders.length === 0 || loading} // Disable saat loading atau tidak ada data
-                  className={`px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ml-auto ${filteredOrders.length === 0 || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  Export Excel
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button className={`lp-btn ${T("lp-btn-ghost-dark","lp-btn-ghost-light")}`} onClick={fetchOrders} style={{padding:"8px 12px"}}>
+                  <RefreshCw style={{width:14,height:14}}/>{!isMobile&&"Refresh"}
                 </button>
-              )}
+                {userPeran !== "koordinator" && (
+                  <button className="lp-btn lp-btn-export" onClick={handleExport} disabled={!filtered.length||loading}>
+                    <Download style={{width:14,height:14}}/>{!isMobile&&"Export Excel"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Loading State */}
-          {loading ? (
-             <div className="flex justify-center py-8">
-               <div className="flex flex-col items-center">
-                 <svg className="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                 </svg>
-                 <p className="text-gray-600">Memuat data laporan...</p>
-               </div>
-             </div>
-          ) : error ? (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-               <p className="font-bold">Error</p>
-               <p>{error}</p>
+            {/* ── STAT CARDS ── */}
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${isMobile?2:4},1fr)`,gap:10,marginBottom:20}}>
+              {stats.map((s,i)=>(
+                <div key={i} className={T("lp-stat-dark","lp-stat-light")}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <div className="lp-stat-icon" style={{background:d?STAT_BG_D[i]:STAT_BG_L[i],color:STAT_COLORS[i]}}>
+                      {s.icon}
+                    </div>
+                    <span className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:11,fontWeight:500}}>{s.label}</span>
+                  </div>
+                  <p style={{fontSize:26,fontWeight:700,color:STAT_COLORS[i],lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{s.val}</p>
+                </div>
+              ))}
             </div>
-          ) : (
-            <>
-              {/* Order Count and Items Per Page */}
-              <div className="flex flex-wrap justify-between items-center mb-4">
-                <p className="text-sm text-gray-600">
-                  Menampilkan {paginatedOrders.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} 
-                  &nbsp;- {Math.min(currentPage * itemsPerPage, filteredOrders.length)} dari {filteredOrders.length} order
-                </p>
-                
-                <div className="flex items-center space-x-2">
-                  <label htmlFor="itemsPerPage" className="text-sm text-gray-600">
-                    Tampilkan:
-                  </label>
-                  <select
-                    id="itemsPerPage"
-                    value={itemsPerPage}
-                    onChange={handleItemsPerPageChange}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
+
+            {/* ── FILTER SECTION ── */}
+            <div className={T("lp-filter-dark","lp-filter-light")} style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <Filter style={{width:13,height:13,color:d?"rgba(99,148,255,0.55)":"rgba(37,99,235,0.5)"}}/>
+                <span className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:11,fontWeight:600,letterSpacing:".1em",textTransform:"uppercase"}}>Filter Laporan</span>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:14}}>
+                <div>
+                  <label className={T("lp-label-dark","lp-label-light")}>Tanggal Mulai</label>
+                  <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className={`lp-input ${T("lp-input-dark","lp-input-light")}`}/>
+                </div>
+                <div>
+                  <label className={T("lp-label-dark","lp-label-light")}>Tanggal Akhir</label>
+                  <input type="date" value={endDate} min={startDate} onChange={e=>setEndDate(e.target.value)} className={`lp-input ${T("lp-input-dark","lp-input-light")}`}/>
+                </div>
+                {userPeran !== "admin portofolio" && (
+                  <div>
+                    <label className={T("lp-label-dark","lp-label-light")}>Portofolio</label>
+                    <select value={portoFilter} onChange={e=>setPortoFilter(e.target.value)} className={`lp-input ${T("lp-input-dark","lp-input-light")}`}>
+                      <option value="">Semua Portofolio</option>
+                      {PORTO_LIST.map(p=><option key={p} value={p.toLowerCase()}>{p}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className={T("lp-label-dark","lp-label-light")}>Status Order</label>
+                  <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className={`lp-input ${T("lp-input-dark","lp-input-light")}`}>
+                    <option value="">Semua Status</option>
+                    {STATUS_LIST.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* Table with fixed columns - PERBAIKAN */}
-              <div className="relative rounded-lg border border-gray-200">
-                <div className="overflow-x-auto">
-                  {/* Tambahkan min-w yang cukup besar agar scroll muncul */}
-                  <table className="min-w-[2000px] w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        {/* Render Kolom Header */}
-                        {allColumns.map((col, index) => (
-                          <th
-                            key={col.key}
-                            scope="col"
-                            className={`
-                              px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider
-                              ${col.fixed ? 'sticky bg-gray-100 z-20 border-r border-gray-300 shadow-sm' : ''}
-                              ${index === 0 ? 'left-0' : ''}
-                              ${index === 1 ? `left-[${allColumns[0].width}]` : ''} /* Sesuaikan dengan lebar kolom 0 */
-                              ${index === 2 ? `left-[calc(${allColumns[0].width}+${allColumns[1].width})]` : ''} /* Sesuaikan dengan lebar kolom 0+1 */
-                            `}
-                             style={col.fixed ? {
-                                left: index === 0 ? '0' : index === 1 ? allColumns[0].width : `calc(${allColumns[0].width} + ${allColumns[1].width})`,
-                                minWidth: col.width, // Terapkan minWidth
-                                width: col.width     // Terapkan width
-                              } : {}}
-                          >
-                            {col.label}
-                          </th>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button className="lp-btn lp-btn-primary" onClick={handleFilter} style={{padding:"8px 16px"}}>
+                  <Filter style={{width:13,height:13}}/>Terapkan
+                </button>
+                <button className={`lp-btn ${T("lp-btn-ghost-dark","lp-btn-ghost-light")}`} onClick={handleReset} style={{padding:"8px 14px"}}>
+                  <X style={{width:13,height:13}}/>Reset
+                </button>
+              </div>
+
+              {/* Active filter tags */}
+              {activeTags.length > 0 && (
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:12}}>
+                  {activeTags.map(tag=>(
+                    <span key={tag.key} className={T("lp-tag-dark","lp-tag-light")}>
+                      {tag.label}
+                      <button className="lp-tag-close" onClick={tag.clear} style={{color:d?"#93c5fd":"#1d4ed8"}}>
+                        <X style={{width:11,height:11}}/>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── LOADING / ERROR / DATA ── */}
+            {loading ? (
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"64px 0",gap:14}}>
+                <div className="lp-spinner"/>
+                <p className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:13}}>Memuat data laporan...</p>
+              </div>
+            ) : error ? (
+              <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:12,padding:"14px 18px",display:"flex",gap:12,alignItems:"flex-start"}}>
+                <AlertCircle style={{width:18,height:18,color:"#f87171",flexShrink:0,marginTop:1}}/>
+                <div>
+                  <p style={{fontSize:13,fontWeight:600,color:"#fca5a5",marginBottom:3}}>Error</p>
+                  <p style={{fontSize:12.5,color:"rgba(252,165,165,0.75)"}}>{error}</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Controls bar */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+
+                  {/* Search */}
+                  <div className="lp-search-icon-wrap" style={{flex:1,minWidth:180,maxWidth:320,position:"relative"}}>
+                    <Search className="lp-si" style={{width:13,height:13,color:d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.38)"}}/>
+                    <input
+                      type="text" placeholder="Cari pelanggan, nomor order..."
+                      value={search} onChange={e=>handleSearch(e.target.value)}
+                      className={`lp-input ${T("lp-input-dark","lp-input-light")}`}
+                      style={{margin:0}}
+                    />
+                    {search && (
+                      <button className="lp-search-clear" onClick={()=>handleSearch("")} style={{color:d?"rgba(148,163,220,0.6)":"#4b6ea8"}}>
+                        <X style={{width:13,height:13}}/>
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    {/* Record info */}
+                    <span className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:12,whiteSpace:"nowrap"}}>
+                      {paginated.length>0?(page-1)*perPage+1:0}–{Math.min(page*perPage,filtered.length)} / <strong>{filtered.length}</strong>
+                    </span>
+
+                    {/* Per page */}
+                    <select value={perPage} onChange={e=>{setPerPage(Number(e.target.value));setPage(1);}} className={`lp-input ${T("lp-input-dark","lp-input-light")}`} style={{width:"auto",padding:"7px 10px"}}>
+                      {[10,25,50,100].map(n=><option key={n} value={n}>{n}/hal</option>)}
+                    </select>
+
+                    {/* View toggle – desktop only */}
+                    {!isMobile && (
+                      <div style={{display:"flex",borderRadius:10,overflow:"hidden",border:d?"1px solid rgba(99,148,255,0.18)":"1px solid rgba(59,130,246,0.18)"}}>
+                        {[{v:"table",icon:<Table2 style={{width:14,height:14}}/>},{v:"cards",icon:<LayoutList style={{width:14,height:14}}/>}].map(({v,icon})=>(
+                          <button key={v} onClick={()=>setViewMode(v)}
+                            style={{
+                              padding:"7px 11px",border:"none",cursor:"pointer",display:"flex",alignItems:"center",
+                              background: viewMode===v ? (d?"rgba(37,99,235,0.25)":"rgba(219,234,254,0.8)") : "transparent",
+                              color: viewMode===v ? (d?"#93c5fd":"#1d4ed8") : (d?"rgba(148,163,220,0.5)":"#4b6ea8"),
+                              transition:"all .18s",
+                            }}>
+                            {icon}
+                          </button>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {paginatedOrders.length > 0 ? (
-                        paginatedOrders.map((order) => (
-                          <tr key={order.id} className="group hover:bg-blue-50 transition-colors duration-150">
-                            {/* Render Sel Data */}
-                            {allColumns.map((col, index) => (
-                              <td
-                                key={`${order.id}-${col.key}`}
-                                className={`
-                                  px-4 py-3 text-sm text-gray-800 whitespace-nowrap
-                                  ${col.fixed ? 'sticky bg-white group-hover:bg-blue-50 z-10 border-r border-gray-200 shadow-sm' : 'bg-white group-hover:bg-blue-50'}
-                                  ${index === 0 ? 'left-0 font-medium text-gray-900' : ''} /* Kolom pertama sticky */
-                                  ${index === 1 ? `left-[${allColumns[0].width}]` : ''} /* Kolom kedua sticky */
-                                  ${index === 2 ? `left-[calc(${allColumns[0].width}+${allColumns[1].width})]` : ''} /* Kolom ketiga sticky */
-                                `}
-                                style={col.fixed ? {
-                                  left: index === 0 ? '0' : index === 1 ? allColumns[0].width : `calc(${allColumns[0].width} + ${allColumns[1].width})`,
-                                  minWidth: col.width, // Terapkan minWidth
-                                  width: col.width     // Terapkan width
-                                } : {}}
-                              >
-                                {col.key === "statusOrder" ? (
-                                    <span className={getStatusClass(order[col.key] || '')}>
-                                      {order[col.key] || '-'}
-                                    </span>
-                                ) : (
-                                  order[col.key] !== null && order[col.key] !== undefined ? order[col.key] : '-' // Tampilkan '-' jika null/undefined
-                                )}
-                              </td>
+                      </div>
+                    )}
+
+                    {/* Column toggle */}
+                    <div ref={colPanelRef} style={{position:"relative"}}>
+                      <button className={`lp-btn ${T("lp-btn-ghost-dark","lp-btn-ghost-light")}`} onClick={()=>setShowColPanel(!showColPanel)} style={{padding:"7px 12px",gap:5}}>
+                        <SlidersHorizontal style={{width:13,height:13}}/>
+                        {!isMobile && <span>Kolom</span>}
+                        <ChevronDown style={{width:11,height:11,transition:"transform .25s",transform:showColPanel?"rotate(180deg)":"rotate(0deg)"}}/>
+                      </button>
+
+                      {showColPanel && (
+                        <div className={`${T("lp-col-panel-dark","lp-col-panel-light")} lp-col-panel-enter`}>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <span className={T("lp-text-s-dark","lp-text-s-light")} style={{fontSize:11.5,fontWeight:600}}>Tampilkan Kolom</span>
+                            <button onClick={()=>setShowColPanel(false)} style={{background:"none",border:"none",cursor:"pointer",color:d?"rgba(148,163,220,0.55)":"#4b6ea8",padding:2}}>
+                              <X style={{width:13,height:13}}/>
+                            </button>
+                          </div>
+                          <div style={{display:"flex",gap:6,marginBottom:10}}>
+                            <button style={{fontSize:11,padding:"3px 8px",borderRadius:6,cursor:"pointer",background:d?"rgba(59,130,246,0.1)":"rgba(219,234,254,0.6)",border:d?"1px solid rgba(59,130,246,0.2)":"1px solid rgba(59,130,246,0.15)",color:d?"#93c5fd":"#1d4ed8"}} onClick={()=>setColVis(ALL_COLS.reduce((a,c)=>({...a,[c.key]:true}),{}))}>Semua</button>
+                            <button style={{fontSize:11,padding:"3px 8px",borderRadius:6,cursor:"pointer",background:d?"rgba(255,255,255,0.04)":"white",border:d?"1px solid rgba(99,148,255,0.14)":"1px solid rgba(59,130,246,0.14)",color:d?"rgba(148,163,220,0.6)":"#4b6ea8"}} onClick={()=>setColVis(ALL_COLS.reduce((a,c)=>({...a,[c.key]:c.fixed||false}),{}))}>Minimal</button>
+                          </div>
+                          {ALL_COLS.map(c=>(
+                            <label key={c.key} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 2px",cursor:c.fixed?"default":"pointer"}}>
+                              <input type="checkbox" checked={colVis[c.key]||false} disabled={c.fixed} onChange={e=>setColVis(p=>({...p,[c.key]:e.target.checked}))} style={{accentColor:d?"#3b82f6":"#1d4ed8",width:14,height:14,cursor:c.fixed?"default":"pointer"}}/>
+                              <span className={T("lp-text-s-dark","lp-text-s-light")} style={{fontSize:12,flex:1}}>{c.label}</span>
+                              {c.fixed && <span style={{fontSize:9.5,color:d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.38)",fontWeight:500}}>TETAP</span>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── TABLE VIEW ── */}
+                {viewMode === "table" ? (
+                  <div className={`lp-tbl-wrap ${T("lp-tbl-wrap-dark","lp-tbl-wrap-light")}`}>
+                    <div className="lp-tbl-scroll" style={{overflowX:"auto"}}>
+                      <table style={{minWidth:"max-content",width:"100%",borderCollapse:"collapse"}}>
+                        <thead className={T("lp-thead-dark","lp-thead-light")}>
+                          <tr>
+                            {visCols.map(col=>(
+                              <th key={col.key}
+                                className={`${T("lp-th-dark","lp-th-light")} ${col.fixed?T("lp-sticky-dark","lp-sticky-light"):""}`}
+                                style={col.fixed?{left:stickyOff[col.key],minWidth:col.w,width:col.w}:{minWidth:col.w}}>
+                                {col.label}
+                              </th>
                             ))}
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={allColumns.length} className="px-4 py-6 text-center text-gray-500">
-                            Tidak ada data yang sesuai dengan filter
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredOrders.length > 0 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <span>
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
+                        </thead>
+                        <tbody className={T("lp-tbody-dark","lp-tbody-light")}>
+                          {paginated.length > 0 ? paginated.map(order=>(
+                            <tr key={order.id} className="lp-tr">
+                              {visCols.map(col=>(
+                                <td key={`${order.id}-${col.key}`}
+                                  className={`${T("lp-td-dark","lp-td-light")} ${col.fixed?T("lp-sticky-dark","lp-sticky-light"):""}`}
+                                  style={col.fixed?{left:stickyOff[col.key],minWidth:col.w,width:col.w}:{}}>
+                                  {col.key==="statusOrder"
+                                    ? <span className={getBadge(order[col.key]||"")}>{order[col.key]||"-"}</span>
+                                    : (order[col.key]??"-")}
+                                </td>
+                              ))}
+                            </tr>
+                          )) : (
+                            <tr><td colSpan={visCols.length}>
+                              <div className="lp-empty">
+                                <div style={{width:48,height:48,borderRadius:14,background:d?"rgba(99,148,255,0.08)":"rgba(219,234,254,0.5)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  <FileText style={{width:22,height:22,color:d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.35)"}}/>
+                                </div>
+                                <p className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:13}}>Tidak ada data yang sesuai</p>
+                                <button className={`lp-btn ${T("lp-btn-ghost-dark","lp-btn-ghost-light")}`} onClick={handleReset} style={{fontSize:12,padding:"6px 14px"}}>
+                                  <X style={{width:12,height:12}}/>Reset filter
+                                </button>
+                              </div>
+                            </td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={goToFirstPage}
-                      disabled={currentPage === 1}
-                      className={`p-2 rounded-md border ${
-                        currentPage === 1 
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      aria-label="Halaman pertama"
-                    >
-                      <ChevronsLeft className="w-4 h-4" />
-                    </button>
-                    
-                    <button
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className={`p-2 rounded-md border ${
-                        currentPage === 1 
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      aria-label="Halaman sebelumnya"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    
-                    {/* Page numbers */}
-                    <div className="hidden md:flex space-x-1">
-                      {[...Array(totalPages)].map((_, index) => {
-                        const pageNum = index + 1;
-                        // Show only nearby pages and first/last pages
-                        if (
-                          pageNum === 1 || 
-                          pageNum === totalPages || 
-                          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                        ) {
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => goToPage(pageNum)}
-                              className={`min-w-[36px] h-9 px-3 rounded-md border ${
-                                currentPage === pageNum
-                                  ? 'bg-blue-600 text-white border-blue-600'
-                                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        } else if (
-                          (pageNum === currentPage - 2 && currentPage > 3) || 
-                          (pageNum === currentPage + 2 && currentPage < totalPages - 2)
-                        ) {
-                          // Ellipsis
-                          return <span key={pageNum} className="flex items-center justify-center">...</span>;
-                        }
+                ) : (
+                  /* ── CARD VIEW ── */
+                  <div>
+                    {paginated.length > 0 ? paginated.map(order=>(
+                      <div key={order.id} className={T("lp-mob-card-dark","lp-mob-card-light")}>
+                        {/* Card header */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                          <div style={{flex:1,minWidth:0,paddingRight:10}}>
+                            <p className={T("lp-text-h-dark","lp-text-h-light")} style={{fontSize:14,fontWeight:600,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              {order.pelanggan||"-"}
+                            </p>
+                            <p className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:12}}>
+                              {order.nomorOrder||"-"}
+                            </p>
+                          </div>
+                          <span className={getBadge(order.statusOrder||"")}>{order.statusOrder||"-"}</span>
+                        </div>
+
+                        {/* Card body grid */}
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px 16px"}}>
+                          {[
+                            ["Portofolio",     order.portofolio],
+                            ["Tgl Order",      order.tanggalOrder],
+                            ["Jenis Pekerjaan",order.jenisPekerjaan],
+                            ["Tgl Pekerjaan",  order.tanggalPekerjaan],
+                            ["Tonase DS",      order.tonaseDS],
+                            ["Nilai Proforma", order.nilaiProforma],
+                            ["No. Sertifikat", order.noSertifikat],
+                            ["Est. Tonase",    order.estimasiTonase],
+                          ].map(([lbl,val])=>(
+                            <div key={lbl}>
+                              <p className={T("lp-mob-field-label-dark","lp-mob-field-label-light")}>{lbl}</p>
+                              <p className={T("lp-mob-field-val-dark","lp-mob-field-val-light")}>{val||"-"}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Nilai invoice highlight */}
+                        {order.nilaiInvoice && order.nilaiInvoice !== "Rp -" && (
+                          <div style={{marginTop:10,padding:"8px 12px",borderRadius:9,background:d?"rgba(59,130,246,0.08)":"rgba(219,234,254,0.5)",border:d?"1px solid rgba(59,130,246,0.14)":"1px solid rgba(59,130,246,0.14)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:11,fontWeight:500}}>Nilai Invoice</span>
+                            <span style={{fontSize:13,fontWeight:600,color:d?"#60a5fa":"#1d4ed8"}}>{order.nilaiInvoice}</span>
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="lp-empty">
+                        <div style={{width:48,height:48,borderRadius:14,background:d?"rgba(99,148,255,0.08)":"rgba(219,234,254,0.5)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          <FileText style={{width:22,height:22,color:d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.35)"}}/>
+                        </div>
+                        <p className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:13}}>Tidak ada data</p>
+                        <button className={`lp-btn ${T("lp-btn-ghost-dark","lp-btn-ghost-light")}`} onClick={handleReset} style={{fontSize:12,padding:"6px 14px"}}>
+                          <X style={{width:12,height:12}}/>Reset filter
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PAGINATION ── */}
+                {filtered.length > 0 && (
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:16,flexWrap:"wrap",gap:10}}>
+                    <span className={T("lp-text-m-dark","lp-text-m-light")} style={{fontSize:12}}>
+                      Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong>
+                    </span>
+
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      {[
+                        {onClick:()=>goTo(1),          icon:<ChevronsLeft  style={{width:14,height:14}}/>, disabled:page===1},
+                        {onClick:()=>goTo(page-1),     icon:<ChevronLeft   style={{width:14,height:14}}/>, disabled:page===1},
+                      ].map((b,i)=>(
+                        <button key={i} className={`lp-pg-btn ${T("lp-pg-btn-dark","lp-pg-btn-light")}`} onClick={b.onClick} disabled={b.disabled}>{b.icon}</button>
+                      ))}
+
+                      {!isMobile && [...Array(totalPages)].map((_,i)=>{
+                        const p=i+1;
+                        if(p===1||p===totalPages||(p>=page-1&&p<=page+1))
+                          return <button key={p} className={`lp-pg-btn ${T("lp-pg-btn-dark","lp-pg-btn-light")} ${page===p?"lp-pg-active":""}`} onClick={()=>goTo(p)}>{p}</button>;
+                        if((p===page-2&&page>3)||(p===page+2&&page<totalPages-2))
+                          return <span key={p} className={T("lp-text-m-dark","lp-text-m-light")} style={{padding:"0 2px",fontSize:13}}>…</span>;
                         return null;
                       })}
+
+                      {isMobile && (
+                        <span className={T("lp-text-s-dark","lp-text-s-light")} style={{fontSize:13,padding:"0 4px",fontVariantNumeric:"tabular-nums"}}>
+                          {page} / {totalPages}
+                        </span>
+                      )}
+
+                      {[
+                        {onClick:()=>goTo(page+1),     icon:<ChevronRight  style={{width:14,height:14}}/>, disabled:page===totalPages},
+                        {onClick:()=>goTo(totalPages), icon:<ChevronsRight style={{width:14,height:14}}/>, disabled:page===totalPages},
+                      ].map((b,i)=>(
+                        <button key={i} className={`lp-pg-btn ${T("lp-pg-btn-dark","lp-pg-btn-light")}`} onClick={b.onClick} disabled={b.disabled}>{b.icon}</button>
+                      ))}
                     </div>
-                    
-                    <button
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className={`p-2 rounded-md border ${
-                        currentPage === totalPages 
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      aria-label="Halaman berikutnya"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                    
-                    <button
-                      onClick={goToLastPage}
-                      disabled={currentPage === totalPages}
-                      className={`p-2 rounded-md border ${
-                        currentPage === totalPages 
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      aria-label="Halaman terakhir"
-                    >
-                      <ChevronsRight className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
-};
-
-export default LaporanOrders;
+}

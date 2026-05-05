@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUser } from "../../context/UserContext";
 import { db } from "../../services/firebase";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import {
@@ -291,12 +292,13 @@ const DashboardCS = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const userData = JSON.parse(localStorage.getItem("user")) || {};
+  const { activeUser } = useUser();
+  const userData = activeUser || {};
   const userPeran = userData.peran || "";
 
   useEffect(() => {
     if (!userPeran || userPeran !== "customer service") {
-      alert("Anda tidak memiliki akses!");
+      // alert("Anda tidak memiliki akses!");
       navigate("/");
       return;
     }

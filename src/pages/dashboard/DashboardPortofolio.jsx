@@ -15,7 +15,8 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../components/layout/ThemeContext"; // sesuaikan path jika perlu
+import { useTheme } from "../../components/layout/ThemeContext";
+import { useUser } from "../../context/UserContext"; // ← tambahan
 
 /* ─────────────────────────────────────────────
    STYLES — selaras penuh dengan Header.jsx & DashboardKoordinator
@@ -286,11 +287,15 @@ const CustomTooltip = ({ active, payload, label, isDark }) => {
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 const DashboardPortofolio = () => {
-  const navigate    = useNavigate();
-  const { isDark }  = useTheme();
-  const d           = isDark;
+  const navigate          = useNavigate();
+  const { isDark }        = useTheme();
+  const { activeUser, logout } = useUser(); // ← reaktif saat switch role
+  const d                 = isDark;
 
-  const [userData,            setUserData]            = useState(null);
+  // userData selalu sinkron dengan activeUser dari context
+  const userData    = activeUser;
+  const bidangLabel = userData?.bidang?.toUpperCase() || "—";
+
   const [totalOrders,         setTotalOrders]         = useState(0);
   const [completedOrders,     setCompletedOrders]     = useState(0);
   const [pendingOrders,       setPendingOrders]       = useState(0);
@@ -301,21 +306,35 @@ const DashboardPortofolio = () => {
   const [isRefresh,           setIsRefresh]           = useState(false);
   const [error,               setError]               = useState(null);
   const [mounted,             setMounted]             = useState(false);
+  // FIX: Tunggu 1 tick sebelum jalankan guard RBAC agar UserContext
+  // sempat membaca localStorage. Tanpa ini, userData = null di render
+  // pertama → redirect palsu ke login meskipun user sudah login.
+  const [authReady,           setAuthReady]           = useState(false);
 
   useEffect(() => {
+    const t = setTimeout(() => setAuthReady(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Guard akses — hanya dijalankan setelah authReady = true
+  useEffect(() => {
+    if (!authReady) return;
     setMounted(true);
-    const stored = JSON.parse(localStorage.getItem("user"));
-    if (!stored || stored.peran !== "admin portofolio") {
-      alert("Anda tidak memiliki akses!");
+    if (!userData) {
       navigate("/");
       return;
     }
-    setUserData(stored);
-  }, []);
+    if (userData.peran?.toLowerCase() !== "admin portofolio") {
+      navigate("/");
+    }
+  }, [authReady, userData]);
 
+  // Re-fetch otomatis setiap kali bidang berubah (akibat switch role)
   useEffect(() => {
-    if (userData?.bidang) fetchOrderSummary(userData.bidang);
-  }, [userData]);
+    if (userData?.bidang && userData?.peran?.toLowerCase() === "admin portofolio") {
+      fetchOrderSummary(userData.bidang);
+    }
+  }, [userData?.bidang, userData?.peran]);
 
   const fetchOrderSummary = async (userBidang, isManualRefresh = false) => {
     if (isManualRefresh) setIsRefresh(true);
@@ -364,7 +383,6 @@ const DashboardPortofolio = () => {
   };
 
   const pct         = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
-  const bidangLabel = userData?.bidang?.toUpperCase() || "—";
   const axisColor   = d ? "rgba(99,148,255,0.4)"  : "rgba(37,99,235,0.35)";
   const gridColor   = d ? "rgba(99,148,255,0.07)" : "rgba(37,99,235,0.07)";
 

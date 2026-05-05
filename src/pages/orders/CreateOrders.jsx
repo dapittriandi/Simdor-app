@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../../services/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { uploadToCloudinary } from "../../services/cloudinaryService";
+import { useUser } from "../../context/UserContext";
 import { useTheme } from "../../components/layout/ThemeContext";
 import {
   ArrowLeft, Upload, Calendar, User, FileText, Map, Anchor,
@@ -245,8 +246,9 @@ const CreateOrder = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
 
-  const userData   = JSON.parse(localStorage.getItem("user"));
-  const userEmail  = userData?.email || "";
+// SESUDAH
+const { activeUser } = useUser();
+const userData = activeUser;  const userEmail  = userData?.email || "";
   const userPeran  = userData?.peran || "";
   const userBidang = userData?.bidang || "";
 
@@ -256,6 +258,8 @@ const CreateOrder = () => {
   const [popupMessage, setPopupMessage] = useState("");
   const [isSuccess, setIsSuccess]     = useState(false);
   const [mounted, setMounted]         = useState(false);
+  // FIX: Tambah authReady agar guard RBAC tidak redirect sebelum UserContext siap
+  const [authReady, setAuthReady]     = useState(false);
   const [files, setFiles]             = useState({ siSpk: null });
   const [filePreview, setFilePreview] = useState(null);
   const [touchedFields, setTouchedFields] = useState({});
@@ -275,13 +279,23 @@ const CreateOrder = () => {
   const d = isDark;
   const T = (dark, light) => d ? dark : light;
 
+  // FIX: Beri jeda 1 tick agar UserContext sempat load dari localStorage
+  // sebelum guard RBAC dijalankan. Ini mencegah redirect palsu saat
+  // activeUser belum ter-inisialisasi.
   useEffect(() => {
+    const timer = setTimeout(() => setAuthReady(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
     if (!userPeran || userPeran !== "admin portofolio") {
-      alert("Anda tidak memiliki akses!"); navigate("/"); return;
+      navigate("/");
+      return;
     }
     setMounted(true);
     return () => setMounted(false);
-  }, [portofolio, userPeran, userBidang]);
+  }, [authReady, portofolio, userPeran, userBidang]);
 
   useEffect(() => { validateFields(); }, [formData, files]);
 
@@ -400,7 +414,7 @@ const CreateOrder = () => {
       style={{ padding:"28px 20px 56px", transition:"background .4s ease" }}>
       <style>{STYLES}</style>
 
-      <div style={{ maxWidth:800, margin:"0 auto" }}
+      <div
         className="co-mount"
         style={{ maxWidth:800, margin:"0 auto", opacity: mounted ? 1 : 0, transition:"opacity .4s" }}>
 
