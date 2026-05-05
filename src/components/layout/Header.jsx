@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "./ThemeContext";
 import { useUser } from "../../context/UserContext";
-import useNotifications from "../../hooks/UseNotifications";
+import useNotifications from "../../hooks/useNotifications";
 
 /* ─────────────────────────────────────────────
    STYLES
