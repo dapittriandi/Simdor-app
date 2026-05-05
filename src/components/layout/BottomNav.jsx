@@ -1,6 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { LayoutDashboard, Folder, FileText, BarChart2, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTheme } from "./ThemeContext";
 
 const STYLES = `
@@ -8,21 +8,10 @@ const STYLES = `
 
 .bnav-root {
   font-family: 'DM Sans', sans-serif;
-  /* FIXED di bagian bawah layar — tidak goyang saat scroll */
   position: fixed;
-  bottom: 0;
   left: 0;
   right: 0;
   z-index: 9990;
-  /* Naikan di atas tab bar Chrome/Safari menggunakan safe-area-inset-bottom */
-  padding-bottom: env(safe-area-inset-bottom, 12px);
-}
-
-/* Fallback tambahan untuk device yang tidak support env() */
-@supports not (padding-bottom: env(safe-area-inset-bottom)) {
-  .bnav-root {
-    padding-bottom: 12px;
-  }
 }
 
 .bnav-dark {
@@ -64,7 +53,6 @@ const STYLES = `
   cursor: pointer;
   background: none;
   border: none;
-  /* Minimal tap target 44px */
   min-height: 44px;
 }
 .bnav-item:active { transform: scale(0.93); }
@@ -77,12 +65,8 @@ const STYLES = `
 .bnav-label { font-size: 9.5px; font-weight: 500; letter-spacing: .02em; }
 
 .bnav-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 32px; height: 32px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
   transition: background .22s, box-shadow .22s;
   position: relative;
 }
@@ -115,11 +99,76 @@ const STYLES = `
 .bnav-item:active::after { opacity: 1; transform: scale(1); }
 `;
 
+/**
+ * useVisualViewportBottom
+ *
+ * Mengembalikan nilai `bottom` (px) yang harus dipakai BottomNav
+ * agar selalu muncul tepat di atas elemen UI browser seperti:
+ *   - Tab bar Chrome (daftar tab)
+ *   - Address bar Chrome yang muncul saat scroll ke atas
+ *   - Keyboard virtual
+ *   - Gesture bar pada Android/iOS
+ *
+ * Cara kerja:
+ *   window.innerHeight          = tinggi window total (termasuk UI chrome browser)
+ *   visualViewport.offsetTop    = jarak dari atas window ke atas area yang terlihat
+ *   visualViewport.height       = tinggi area yang benar-benar terlihat
+ *
+ *   "Gap bawah" = window.innerHeight - (vv.offsetTop + vv.height)
+ *
+ *   Gap inilah yang dipakai sebagai nilai `bottom` pada BottomNav,
+ *   sehingga nav selalu "duduk" tepat di atas elemen browser apapun.
+ */
+function useVisualViewportBottom() {
+  const [bottomOffset, setBottomOffset] = useState(() => {
+    // Initial calculation saat pertama render
+    const vv = window.visualViewport;
+    if (!vv) return 0;
+    return Math.max(0, Math.round(window.innerHeight - (vv.offsetTop + vv.height)));
+  });
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+
+    const compute = () => {
+      if (!vv) { setBottomOffset(0); return; }
+      const gap = window.innerHeight - (vv.offsetTop + vv.height);
+      setBottomOffset(Math.max(0, Math.round(gap)));
+    };
+
+    const schedule = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(compute);
+    };
+
+    if (vv) {
+      vv.addEventListener("resize", schedule);
+      vv.addEventListener("scroll", schedule);
+    }
+    window.addEventListener("resize", schedule);
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener("resize", schedule);
+        vv.removeEventListener("scroll", schedule);
+      }
+      window.removeEventListener("resize", schedule);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return bottomOffset;
+}
+
 export default function BottomNav() {
   const { isDark } = useTheme();
   const location = useLocation();
   const [mounted, setMounted] = useState(false);
   const userData = JSON.parse(localStorage.getItem("user")) || {};
+
+  // Offset dinamis — otomatis naik jika ada tab bar / keyboard di bawah
+  const bottomOffset = useVisualViewportBottom();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -179,7 +228,15 @@ export default function BottomNav() {
           mounted ? "bnav-mounted" : "opacity-0"
         }`}
         style={{
-          transition: "background 0.4s ease, border-color 0.4s ease",
+          // bottom bergerak real-time mengikuti visualViewport
+          bottom: bottomOffset,
+          transition: [
+            "background 0.4s ease",
+            "border-color 0.4s ease",
+            // Animasi smooth saat tab bar muncul/sembunyi
+            // Tapi cepat saat keyboard muncul supaya tidak tertinggal
+            `bottom ${bottomOffset > 100 ? "0.05s" : "0.15s"} ease-out`,
+          ].join(", "),
         }}
       >
         <div className={d ? "bnav-accent-dark" : "bnav-accent-light"} />
@@ -205,6 +262,13 @@ export default function BottomNav() {
             );
           })}
         </div>
+        {/*
+          Padding bawah ekstra apabila visualViewport tidak mendeteksi gap
+          (misal di iOS Safari yang pakai safe-area-inset)
+        */}
+        {bottomOffset === 0 && (
+          <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
+        )}
       </nav>
     </>
   );
