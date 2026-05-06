@@ -75,6 +75,10 @@ const useNotifications = (userData) => {
           : null;
         const timeStr = updatedAt ? formatRelative(updatedAt) : "Baru saja";
 
+        // portofolio dari field order — dipakai untuk membangun path navigasi
+        // route pattern: /orders/:portofolio/detail/:id
+        const porto = order.portofolio || "";
+
         // ── RULES PER PERAN ──
 
         if (peran === "admin portofolio") {
@@ -83,6 +87,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("new_order"),
               orderId: doc.id,
+              portofolio: porto,
               type: "warning",
               title: "Order Baru Menunggu",
               body: `Order dari ${order.pelanggan || "—"} menunggu diproses.`,
@@ -99,6 +104,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("incomplete"),
               orderId: doc.id,
+              portofolio: porto,
               type: "warning",
               title: "Data Belum Lengkap",
               body: `Order ${order.nomorOrder || doc.id} (${order.pelanggan || "—"}) masih ada field yang kosong.`,
@@ -111,6 +117,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("done"),
               orderId: doc.id,
+              portofolio: porto,
               type: "success",
               title: "Order Selesai",
               body: `Order ${order.nomorOrder || doc.id} (${order.pelanggan || "—"}) telah selesai.`,
@@ -126,6 +133,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("no_nomor"),
               orderId: doc.id,
+              portofolio: porto,
               type: "warning",
               title: "Nomor Order Belum Diisi",
               body: `Order dari ${order.pelanggan || "—"} belum memiliki nomor order.`,
@@ -138,6 +146,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("new_cs"),
               orderId: doc.id,
+              portofolio: porto,
               type: "info",
               title: "Order Baru Masuk",
               body: `Order dari ${order.pelanggan || "—"} menunggu penomoran.`,
@@ -153,6 +162,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("invoice_action"),
               orderId: doc.id,
+              portofolio: porto,
               type: "warning",
               title: "Invoice Perlu Dilengkapi",
               body: `Order ${order.nomorOrder || doc.id} (${order.pelanggan || "—"}) menunggu pengisian invoice.`,
@@ -165,6 +175,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("proforma"),
               orderId: doc.id,
+              portofolio: porto,
               type: "info",
               title: "Proforma Perlu Konfirmasi",
               body: `Order ${order.nomorOrder || doc.id} (${order.pelanggan || "—"}) menunggu konfirmasi proforma.`,
@@ -181,6 +192,7 @@ const useNotifications = (userData) => {
             newNotifs.push({
               id: notifId("status_change"),
               orderId: doc.id,
+              portofolio: porto,
               type: "info",
               title: "Status Order Diperbarui",
               body: `Order ${order.nomorOrder || doc.id} berubah ke "${order.statusOrder}".`,

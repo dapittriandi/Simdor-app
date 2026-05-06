@@ -1,709 +1,899 @@
-import { useState, useEffect } from "react";
+/**
+ * DashboardPortofolio.jsx  ·  v2.0  (single-file edition)
+ * ─────────────────────────────────────────────────────────────
+ * Semua dalam satu file — styles, helpers, custom hook,
+ * sub-components, dan main component.
+ *
+ * Arsitektur internal:
+ *  § 1  STYLES
+ *  § 2  HELPERS  (formatter, month builder)
+ *  § 3  usePortofolioData  (custom hook — data & Firestore)
+ *  § 4  SUB-COMPONENTS  (memoized, reusable)
+ *  § 5  MAIN COMPONENT  (DashboardPortofolio)
+ * ─────────────────────────────────────────────────────────────
+ */
+
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "../../services/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, Legend,
+  ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import {
   ChartBarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  ClipboardDocumentListIcon,
-  CurrencyDollarIcon,
-  ExclamationTriangleIcon,
   ArrowPathIcon,
+  BoltIcon,
+  PlusCircleIcon,
+  ListBulletIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../components/layout/ThemeContext";
-import { useUser } from "../../context/UserContext"; // ← tambahan
+import { useUser }  from "../../context/UserContext";
 
-/* ─────────────────────────────────────────────
-   STYLES — selaras penuh dengan Header.jsx & DashboardKoordinator
-───────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   § 1  STYLES  —  scoped under .dp2 namespace
+══════════════════════════════════════════════════════════════ */
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-.dp-root { font-family: 'DM Sans', sans-serif; }
+.dp2*,.dp2*::before,.dp2*::after{box-sizing:border-box;margin:0;padding:0}
+.dp2{font-family:'Syne',sans-serif}
+.dp2.dark {background:#0a0d1a;min-height:100vh}
+.dp2.light{background:#f0f6ff;min-height:100vh}
+.dp2-inner{max-width:1200px;margin:0 auto;padding:28px 20px}
 
-/* ── Page background ── */
-.dp-bg-dark  { background: #070b18; min-height: 100vh; }
-.dp-bg-light { background: #f0f6ff; min-height: 100vh; }
+/* ── Header ── */
+.dp2-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:14px}
+.dp2-header-left{display:flex;flex-direction:column;gap:5px}
+.dp2-breadcrumb{display:flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+.dp2.dark  .dp2-breadcrumb{color:rgba(74,85,128,.9)}
+.dp2.light .dp2-breadcrumb{color:rgba(37,99,235,.45)}
+.dp2-page-title{font-size:25px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.dp2.dark  .dp2-page-title{color:#e8ecf8}
+.dp2.light .dp2-page-title{color:#1e3a5f}
+.dp2-page-title em{font-style:normal;background:linear-gradient(135deg,#4f8ef7,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2-page-meta{display:flex;align-items:center;gap:7px;font-size:11.5px}
+.dp2.dark  .dp2-page-meta{color:rgba(74,85,128,.8)}
+.dp2.light .dp2-page-meta{color:rgba(37,99,235,.5)}
+.dp2-live-dot{width:6px;height:6px;border-radius:50%;background:#22d3a0;box-shadow:0 0 7px #22d3a0}
+@keyframes dp2Pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.dp2-live-dot{animation:dp2Pulse 2s ease-in-out infinite}
+.dp2-header-right{display:flex;align-items:center;gap:10px}
+.dp2-badge{padding:5px 14px;border-radius:9px;font-size:11px;font-weight:700;letter-spacing:.11em;color:#fff;background:linear-gradient(135deg,#1d4ed8,#a78bfa)}
+.dp2-btn-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;border:none;transition:all .2s}
+.dp2.dark  .dp2-btn-icon{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(148,163,220,.8)}
+.dp2.light .dp2-btn-icon{background:rgba(255,255,255,.8);border:1px solid rgba(59,130,246,.18);color:#4b6ea8;box-shadow:0 1px 4px rgba(59,130,246,.08)}
+.dp2.dark  .dp2-btn-icon:hover{background:rgba(79,142,247,.12);border-color:rgba(79,142,247,.4);color:#7fb3ff}
+.dp2.light .dp2-btn-icon:hover{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.4);color:#2563eb}
+.dp2-btn-icon:disabled{opacity:.5;cursor:not-allowed}
 
-/* ── Section title ── */
-.dp-title-dark   { color: #e2e8f5; }
-.dp-title-light  { color: #1e3a5f; }
-.dp-sub-dark     { color: rgba(99,148,255,0.5); }
-.dp-sub-light    { color: rgba(37,99,235,0.45); }
+/* ── Accent line ── */
+.dp2-accent{height:1px;margin:10px 0 24px}
+.dp2.dark  .dp2-accent{background:linear-gradient(90deg,transparent,rgba(79,142,247,.5),rgba(167,139,250,.4),transparent)}
+.dp2.light .dp2-accent{background:linear-gradient(90deg,transparent,rgba(37,99,235,.35),rgba(99,102,241,.3),transparent)}
 
-/* ── Bidang badge / chip ── */
-.dp-chip-dark  { background: linear-gradient(135deg,#1d4ed8,#3b82f6); box-shadow: 0 0 18px rgba(59,130,246,0.45); border-radius: 10px; }
-.dp-chip-light { background: linear-gradient(135deg,#2563eb,#60a5fa); box-shadow: 0 0 14px rgba(59,130,246,0.22); border-radius: 10px; }
+/* ── KPI Grid ── */
+.dp2-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+.dp2-kpi{border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;cursor:default;transition:border-color .25s,transform .2s,box-shadow .25s}
+.dp2.dark  .dp2-kpi{background:rgba(15,19,38,.9);border:1px solid rgba(255,255,255,.06)}
+.dp2.light .dp2-kpi{background:rgba(255,255,255,.85);border:1px solid rgba(59,130,246,.12);box-shadow:0 2px 16px rgba(59,130,246,.07);backdrop-filter:blur(16px)}
+.dp2-kpi:hover{transform:translateY(-2px)}
+.dp2.dark  .dp2-kpi:hover{border-color:rgba(255,255,255,.12);box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.dp2.light .dp2-kpi:hover{border-color:rgba(59,130,246,.28);box-shadow:0 6px 24px rgba(59,130,246,.12)}
+.dp2-kpi::before{content:'';position:absolute;inset:0;border-radius:16px;opacity:0;transition:opacity .3s;pointer-events:none}
+.dp2-kpi:hover::before{opacity:1}
+.dp2-kpi.kpi-blue::before  {background:radial-gradient(ellipse at 90% 0%,rgba(79,142,247,.14),transparent 65%)}
+.dp2-kpi.kpi-green::before {background:radial-gradient(ellipse at 90% 0%,rgba(34,211,160,.11),transparent 65%)}
+.dp2-kpi.kpi-orange::before{background:radial-gradient(ellipse at 90% 0%,rgba(255,140,66,.11),transparent 65%)}
+.dp2-kpi.kpi-purple::before{background:radial-gradient(ellipse at 90% 0%,rgba(167,139,250,.11),transparent 65%)}
+.dp2-kpi.kpi-teal::before  {background:radial-gradient(ellipse at 90% 0%,rgba(6,182,212,.11),transparent 65%)}
+.dp2-kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.dp2-kpi-label{font-size:11px;font-weight:600;letter-spacing:.055em;text-transform:uppercase;line-height:1.5;max-width:130px}
+.dp2.dark  .dp2-kpi-label{color:rgba(74,85,128,.95)}
+.dp2.light .dp2-kpi-label{color:#4b6ea8}
+.dp2-kpi-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dp2.dark  .dp2-kpi-ico.ico-blue  {background:rgba(79,142,247,.15);color:#7fb3ff}
+.dp2.dark  .dp2-kpi-ico.ico-green {background:rgba(34,211,160,.12);color:#22d3a0}
+.dp2.dark  .dp2-kpi-ico.ico-orange{background:rgba(255,140,66,.12);color:#ff8c42}
+.dp2.dark  .dp2-kpi-ico.ico-purple{background:rgba(167,139,250,.12);color:#a78bfa}
+.dp2.dark  .dp2-kpi-ico.ico-teal  {background:rgba(6,182,212,.12);color:#06b6d4}
+.dp2.light .dp2-kpi-ico.ico-blue  {background:rgba(37,99,235,.1);color:#2563eb}
+.dp2.light .dp2-kpi-ico.ico-green {background:rgba(5,150,105,.1);color:#059669}
+.dp2.light .dp2-kpi-ico.ico-orange{background:rgba(234,88,12,.09);color:#ea580c}
+.dp2.light .dp2-kpi-ico.ico-purple{background:rgba(124,58,237,.1);color:#7c3aed}
+.dp2.light .dp2-kpi-ico.ico-teal  {background:rgba(8,145,178,.1);color:#0891b2}
+.dp2-kpi-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.dp2.dark  .dp2-kpi-val.val-blue  {color:#7fb3ff}
+.dp2.dark  .dp2-kpi-val.val-green {color:#88f0ce}
+.dp2.dark  .dp2-kpi-val.val-orange{color:#ffb380}
+.dp2.dark  .dp2-kpi-val.val-purple{color:#c4b5fd}
+.dp2.dark  .dp2-kpi-val.val-teal  {color:#67e8f9}
+.dp2.light .dp2-kpi-val.val-blue  {background:linear-gradient(135deg,#1d4ed8,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2.light .dp2-kpi-val.val-green {background:linear-gradient(135deg,#059669,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2.light .dp2-kpi-val.val-orange{background:linear-gradient(135deg,#ea580c,#fdba74);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2.light .dp2-kpi-val.val-purple{background:linear-gradient(135deg,#7c3aed,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2.light .dp2-kpi-val.val-teal  {background:linear-gradient(135deg,#0891b2,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.dp2-kpi-sub{font-size:10px;margin-top:5px;font-family:'JetBrains Mono',monospace}
+.dp2.dark  .dp2-kpi-sub{color:rgba(99,148,255,.4)}
+.dp2.light .dp2-kpi-sub{color:rgba(37,99,235,.4)}
+.dp2-kpi-badge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;margin-top:9px;padding:3px 9px;border-radius:6px}
+.dp2-kpi-badge.up  {background:rgba(34,211,160,.1);color:#22d3a0}
+.dp2.light .dp2-kpi-badge.up{background:rgba(5,150,105,.1);color:#059669}
+.dp2-kpi-badge.warn{background:rgba(255,140,66,.1);color:#ff8c42}
+.dp2.light .dp2-kpi-badge.warn{background:rgba(234,88,12,.08);color:#ea580c}
 
-/* ── Glass card ── */
-.dp-card-dark {
-  background: rgba(12,18,40,0.75);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(99,148,255,0.13);
-  box-shadow: 0 4px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
-  border-radius: 18px;
-  transition: border-color 0.25s, box-shadow 0.25s;
-}
-.dp-card-dark:hover {
-  border-color: rgba(96,165,250,0.28);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(96,165,250,0.08);
-}
-.dp-card-light {
-  background: rgba(240,246,255,0.82);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(59,130,246,0.14);
-  box-shadow: 0 4px 24px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
-  border-radius: 18px;
-  transition: border-color 0.25s, box-shadow 0.25s;
-}
-.dp-card-light:hover {
-  border-color: rgba(59,130,246,0.28);
-  box-shadow: 0 8px 36px rgba(59,130,246,0.13);
-}
+/* ── 2-col row ── */
+.dp2-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:700px){.dp2-row2{grid-template-columns:1fr}}
 
-/* ── Card header divider ── */
-.dp-divider-dark  { border-bottom: 1px solid rgba(99,148,255,0.1); }
-.dp-divider-light { border-bottom: 1px solid rgba(59,130,246,0.1); }
+/* ── Card ── */
+.dp2-card{border-radius:16px;overflow:hidden;transition:border-color .25s}
+.dp2.dark  .dp2-card{background:rgba(15,19,38,.9);border:1px solid rgba(255,255,255,.06)}
+.dp2.light .dp2-card{background:rgba(255,255,255,.85);border:1px solid rgba(59,130,246,.12);box-shadow:0 2px 16px rgba(59,130,246,.06);backdrop-filter:blur(16px)}
+.dp2.dark  .dp2-card:hover{border-color:rgba(255,255,255,.11)}
+.dp2.light .dp2-card:hover{border-color:rgba(59,130,246,.25)}
+.dp2-card-full{border-radius:16px;overflow:hidden;margin-bottom:14px;transition:border-color .25s}
+.dp2.dark  .dp2-card-full{background:rgba(15,19,38,.9);border:1px solid rgba(255,255,255,.06)}
+.dp2.light .dp2-card-full{background:rgba(255,255,255,.85);border:1px solid rgba(59,130,246,.12);box-shadow:0 2px 16px rgba(59,130,246,.06);backdrop-filter:blur(16px)}
+.dp2-card-head{padding:13px 18px;display:flex;align-items:center;gap:10px}
+.dp2.dark  .dp2-card-head{border-bottom:1px solid rgba(255,255,255,.05)}
+.dp2.light .dp2-card-head{border-bottom:1px solid rgba(59,130,246,.1)}
+.dp2-card-ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.dp2.dark  .dp2-card-ico.ico-green {background:rgba(34,211,160,.1);color:#22d3a0}
+.dp2.dark  .dp2-card-ico.ico-blue  {background:rgba(79,142,247,.1);color:#4f8ef7}
+.dp2.dark  .dp2-card-ico.ico-orange{background:rgba(255,140,66,.1);color:#ff8c42}
+.dp2.light .dp2-card-ico.ico-green {background:rgba(5,150,105,.1);color:#059669}
+.dp2.light .dp2-card-ico.ico-blue  {background:rgba(37,99,235,.1);color:#2563eb}
+.dp2.light .dp2-card-ico.ico-orange{background:rgba(234,88,12,.09);color:#ea580c}
+.dp2-card-title{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.dp2.dark  .dp2-card-title{color:#e8ecf8}
+.dp2.light .dp2-card-title{color:#1e3a5f}
+.dp2-card-sub{font-size:10px;margin-top:1px}
+.dp2.dark  .dp2-card-sub{color:rgba(74,85,128,.8)}
+.dp2.light .dp2-card-sub{color:rgba(37,99,235,.45)}
+.dp2-card-body{padding:18px}
 
-/* ── Icon wrapper ── */
-.dp-icon-dark  { background: rgba(255,255,255,0.05); border: 1px solid rgba(99,148,255,0.15); border-radius: 12px; }
-.dp-icon-light { background: rgba(255,255,255,0.8);  border: 1px solid rgba(59,130,246,0.16); border-radius: 12px; box-shadow: 0 1px 4px rgba(59,130,246,0.08); }
+/* ── Progress ── */
+.dp2-ring-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.dp2-prog-info{flex:1;min-width:180px}
+.dp2-prog-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.dp2-prog-lbl{font-size:11px}
+.dp2.dark  .dp2-prog-lbl{color:rgba(148,163,220,.75)}
+.dp2.light .dp2-prog-lbl{color:#4b6ea8}
+.dp2-prog-pct{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+.dp2.dark  .dp2-prog-pct{color:#7fb3ff}
+.dp2.light .dp2-prog-pct{color:#1d4ed8}
+.dp2-prog-track{border-radius:99px;height:8px;overflow:hidden;margin-bottom:18px}
+.dp2.dark  .dp2-prog-track{background:rgba(79,142,247,.1)}
+.dp2.light .dp2-prog-track{background:rgba(37,99,235,.1)}
+@keyframes dp2Fill{from{width:0%}}
+.dp2-prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#1a3a8f,#4f8ef7,#7fb3ff);box-shadow:0 0 12px rgba(79,142,247,.4);animation:dp2Fill 1s cubic-bezier(.22,1,.36,1) forwards;transition:width .7s cubic-bezier(.22,1,.36,1)}
+.dp2-milestones{display:flex;gap:8px;flex-wrap:wrap}
+.dp2-ms{border-radius:10px;padding:10px 14px;flex:1;min-width:72px;text-align:center}
+.dp2.dark  .dp2-ms{background:rgba(20,24,48,.8);border:1px solid rgba(255,255,255,.06)}
+.dp2.light .dp2-ms{background:rgba(219,234,254,.5);border:1px solid rgba(59,130,246,.14)}
+.dp2-ms-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;line-height:1}
+.dp2-ms-lbl{font-size:9px;letter-spacing:.05em;text-transform:uppercase;margin-top:3px}
+.dp2.dark  .dp2-ms-lbl{color:rgba(74,85,128,.8)}
+.dp2.light .dp2-ms-lbl{color:rgba(37,99,235,.5)}
 
-/* ── Stat label ── */
-.dp-label-dark  { color: rgba(148,163,220,0.7); font-size: 12.5px; font-weight: 500; }
-.dp-label-light { color: #4b6ea8; font-size: 12.5px; font-weight: 500; }
+/* ── Status pill ── */
+.dp2-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;font-size:11px;font-weight:600;margin-top:13px}
+.dp2.dark  .dp2-pill.done {background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.25);color:#22d3a0}
+.dp2.light .dp2-pill.done {background:rgba(220,252,231,.8);border:1px solid rgba(134,239,172,.7);color:#15803d}
+.dp2.dark  .dp2-pill.wip  {background:rgba(255,140,66,.1);border:1px solid rgba(255,140,66,.25);color:#ff8c42}
+.dp2.light .dp2-pill.wip  {background:rgba(255,237,213,.8);border:1px solid rgba(253,186,116,.6);color:#c2410c}
+.dp2.dark  .dp2-pill.empty{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(148,163,220,.7)}
+.dp2.light .dp2-pill.empty{background:rgba(241,245,249,1);border:1px solid rgba(203,213,225,1);color:#64748b}
 
-/* ── Gradient numbers ── */
-.dp-num-blue   { background: linear-gradient(135deg,#3b82f6,#93c5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.dp-num-green  { background: linear-gradient(135deg,#10b981,#6ee7b7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.dp-num-orange { background: linear-gradient(135deg,#f97316,#fdba74); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.dp-num-emerald{ background: linear-gradient(135deg,#059669,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.dp-num-purple { background: linear-gradient(135deg,#8b5cf6,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-
-/* ── Glow per card ── */
-.dp-glow-blue    { box-shadow: 0 0 28px rgba(59,130,246,0.18); }
-.dp-glow-green   { box-shadow: 0 0 28px rgba(16,185,129,0.16); }
-.dp-glow-orange  { box-shadow: 0 0 28px rgba(249,115,22,0.16); }
-.dp-glow-emerald { box-shadow: 0 0 28px rgba(5,150,105,0.16);  }
-.dp-glow-purple  { box-shadow: 0 0 28px rgba(139,92,246,0.16); }
-
-/* ── Progress bar track ── */
-.dp-track-dark  { background: rgba(99,148,255,0.1);  border-radius: 99px; overflow: hidden; height: 10px; }
-.dp-track-light { background: rgba(59,130,246,0.1);  border-radius: 99px; overflow: hidden; height: 10px; }
-
-/* ── Progress bar fill ── */
-@keyframes dpFill { from { width: 0%; } }
-.dp-fill {
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(90deg, #1d4ed8 0%, #3b82f6 50%, #60a5fa 100%);
-  box-shadow: 0 0 14px rgba(59,130,246,0.45);
-  animation: dpFill 1s cubic-bezier(0.22,1,0.36,1) forwards;
-  transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
-}
-
-/* ── Progress milestones ── */
-.dp-milestone-dark  { background: rgba(99,148,255,0.12); border: 1px solid rgba(99,148,255,0.2); border-radius: 12px; }
-.dp-milestone-light { background: rgba(219,234,254,0.6); border: 1px solid rgba(59,130,246,0.16); border-radius: 12px; }
-.dp-milestone-val-dark   { color: #60a5fa; font-family:'DM Mono',monospace; font-size:22px; font-weight:700; }
-.dp-milestone-val-light  { color: #1d4ed8; font-family:'DM Mono',monospace; font-size:22px; font-weight:700; }
-.dp-milestone-label-dark  { color: rgba(99,148,255,0.55); font-size:11px; }
-.dp-milestone-label-light { color: rgba(37,99,235,0.5);   font-size:11px; }
-
-/* ── Status pill (all done / in process) ── */
-.dp-status-pill-done-dark   { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28); border-radius: 14px; color: #6ee7b7; }
-.dp-status-pill-done-light  { background: rgba(220,252,231,0.8);  border: 1px solid rgba(134,239,172,0.7); border-radius: 14px; color: #15803d; }
-.dp-status-pill-wip-dark    { background: rgba(249,115,22,0.1);   border: 1px solid rgba(249,115,22,0.25); border-radius: 14px; color: #fdba74; }
-.dp-status-pill-wip-light   { background: rgba(255,237,213,0.8);  border: 1px solid rgba(253,186,116,0.6); border-radius: 14px; color: #c2410c; }
-.dp-status-pill-empty-dark  { background: rgba(99,148,255,0.08);  border: 1px solid rgba(99,148,255,0.18); border-radius: 14px; color: rgba(148,163,220,0.7); }
-.dp-status-pill-empty-light { background: rgba(241,245,249,1);    border: 1px solid rgba(203,213,225,1);   border-radius: 14px; color: #64748b; }
-
-/* ── Section title ── */
-.dp-section-title-dark  { font-size: 15px; font-weight: 600; color: #e2e8f5; }
-.dp-section-title-light { font-size: 15px; font-weight: 600; color: #1e3a5f; }
-.dp-section-sub-dark    { font-size: 11.5px; color: rgba(99,148,255,0.5); margin-top: 2px; }
-.dp-section-sub-light   { font-size: 11.5px; color: rgba(37,99,235,0.45); margin-top: 2px; }
-
-/* ── Error banner ── */
-.dp-error-dark  { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.25);  border-radius: 14px; color: #fca5a5; }
-.dp-error-light { background: rgba(254,226,226,0.8); border: 1px solid rgba(252,165,165,0.5); border-radius: 14px; color: #b91c1c; }
+/* ── Activity feed ── */
+.dp2-act-list{display:flex;flex-direction:column}
+.dp2-act-item{display:flex;align-items:flex-start;gap:11px;padding:10px 0}
+.dp2.dark  .dp2-act-item{border-bottom:1px solid rgba(255,255,255,.04)}
+.dp2.light .dp2-act-item{border-bottom:1px solid rgba(59,130,246,.07)}
+.dp2-act-item:last-child{border-bottom:none}
+.dp2-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.dp2-act-dot.done{background:#22d3a0;box-shadow:0 0 5px #22d3a0}
+.dp2-act-dot.wip {background:#ff8c42;box-shadow:0 0 5px #ff8c42}
+.dp2-act-dot.new {background:#4f8ef7;box-shadow:0 0 5px #4f8ef7}
+.dp2-act-txt{font-size:12px;line-height:1.5}
+.dp2-act-time{font-size:9.5px;font-family:'JetBrains Mono',monospace;margin-top:2px}
+.dp2.dark  .dp2-act-time{color:rgba(74,85,128,.8)}
+.dp2.light .dp2-act-time{color:rgba(37,99,235,.45)}
 
 /* ── Tooltip ── */
-.dp-tooltip-dark  { background:rgba(7,11,24,0.95)!important; border:1px solid rgba(99,148,255,0.2)!important; border-radius:10px!important; color:#e2e8f5!important; font-family:'DM Sans',sans-serif!important; font-size:12px!important; }
-.dp-tooltip-light { background:rgba(248,251,255,0.98)!important; border:1px solid rgba(59,130,246,0.15)!important; border-radius:10px!important; color:#1e3a5f!important; font-family:'DM Sans',sans-serif!important; font-size:12px!important; }
+.dp2-tooltip{padding:10px 14px;border-radius:10px}
+.dp2-tooltip.dark {background:rgba(10,13,26,.97);border:1px solid rgba(79,142,247,.2)}
+.dp2-tooltip.light{background:rgba(248,251,255,.98);border:1px solid rgba(59,130,246,.15)}
+.dp2-tooltip-title{font-weight:700;font-size:12px;margin-bottom:4px}
+.dp2-tooltip.dark  .dp2-tooltip-title{color:#93c5fd}
+.dp2-tooltip.light .dp2-tooltip-title{color:#1d4ed8}
+.dp2-tooltip-row{font-size:11px;font-family:'JetBrains Mono',monospace}
+.dp2-tooltip.dark  .dp2-tooltip-row{color:#c8d0e8}
+.dp2-tooltip.light .dp2-tooltip-row{color:#334e7a}
 
-/* ── Skeleton shimmer ── */
-@keyframes dpShimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
-.dp-skel-dark {
-  background: linear-gradient(90deg,rgba(30,40,80,0.6) 25%,rgba(50,65,120,0.4) 50%,rgba(30,40,80,0.6) 75%);
-  background-size: 800px 100%; animation: dpShimmer 1.6s infinite linear; border-radius: 8px;
-}
-.dp-skel-light {
-  background: linear-gradient(90deg,rgba(219,234,254,0.6) 25%,rgba(191,219,254,0.4) 50%,rgba(219,234,254,0.6) 75%);
-  background-size: 800px 100%; animation: dpShimmer 1.6s infinite linear; border-radius: 8px;
-}
+/* ── Chart legend & footer ── */
+.dp2-chart-legend{display:flex;gap:16px;align-items:center;margin-left:auto}
+.dp2-chart-legend span{display:flex;align-items:center;gap:5px;font-size:10.5px}
+.dp2.dark  .dp2-chart-legend span{color:rgba(74,85,128,.9)}
+.dp2.light .dp2-chart-legend span{color:rgba(37,99,235,.55)}
+.dp2-legend-sq{width:10px;height:10px;border-radius:2px;display:inline-block}
+.dp2-chart-footer{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;flex-wrap:wrap;gap:8px;font-size:11px}
+.dp2.dark  .dp2-chart-footer{border-top:1px solid rgba(255,255,255,.05);color:rgba(74,85,128,.8)}
+.dp2.light .dp2-chart-footer{border-top:1px solid rgba(59,130,246,.08);color:rgba(37,99,235,.5)}
+.dp2-chart-footer span{display:flex;align-items:center;gap:5px}
+
+/* ── Quick actions ── */
+.dp2-qa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+@media(max-width:500px){.dp2-qa-grid{grid-template-columns:1fr}}
+.dp2-qa{border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;transition:all .2s;width:100%}
+.dp2.dark  .dp2-qa{background:rgba(20,24,48,.7);border:1px solid rgba(255,255,255,.06);color:#e8ecf8}
+.dp2.light .dp2-qa{background:rgba(239,246,255,.7);border:1px solid rgba(59,130,246,.12);color:#1e3a5f}
+.dp2.dark  .dp2-qa:hover{border-color:rgba(79,142,247,.4);background:rgba(79,142,247,.08)}
+.dp2.light .dp2-qa:hover{border-color:rgba(37,99,235,.35);background:rgba(219,234,254,.6)}
+.dp2-qa-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.dp2.dark  .dp2-qa-ico{background:rgba(79,142,247,.12);color:#4f8ef7}
+.dp2.light .dp2-qa-ico{background:rgba(37,99,235,.1);color:#2563eb}
+.dp2-qa-lbl{font-size:12.5px;font-weight:700;letter-spacing:-.01em}
+.dp2-qa-desc{font-size:10px}
+.dp2.dark  .dp2-qa-desc{color:rgba(74,85,128,.8)}
+.dp2.light .dp2-qa-desc{color:rgba(37,99,235,.5)}
+
+/* ── Error banner ── */
+.dp2-error{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-radius:13px;margin-bottom:20px}
+.dp2.dark  .dp2-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+.dp2.light .dp2-error{background:rgba(254,226,226,.8);border:1px solid rgba(252,165,165,.5);color:#b91c1c}
+.dp2-retry-btn{margin-left:auto;padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid currentColor;background:transparent;color:inherit;transition:opacity .2s;flex-shrink:0}
+.dp2-retry-btn:hover{opacity:.7}
+
+/* ── Skeleton ── */
+@keyframes dp2Shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.dp2.dark  .dp2-skel{background:linear-gradient(90deg,rgba(20,24,48,.7) 25%,rgba(79,142,247,.06) 50%,rgba(20,24,48,.7) 75%);background-size:800px 100%;animation:dp2Shimmer 1.8s infinite linear}
+.dp2.light .dp2-skel{background:linear-gradient(90deg,rgba(219,234,254,.6) 25%,rgba(191,219,254,.4) 50%,rgba(219,234,254,.6) 75%);background-size:800px 100%;animation:dp2Shimmer 1.8s infinite linear}
 
 /* ── Animations ── */
-@keyframes dpPageIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-.dp-page-in { animation: dpPageIn 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
-
-@keyframes dpCardIn { from{opacity:0;transform:translateY(20px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
-.dp-c1 { animation: dpCardIn 0.55s 0.05s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c2 { animation: dpCardIn 0.55s 0.12s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c3 { animation: dpCardIn 0.55s 0.19s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c4 { animation: dpCardIn 0.55s 0.26s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c5 { animation: dpCardIn 0.55s 0.33s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c6 { animation: dpCardIn 0.55s 0.40s cubic-bezier(0.22,1,0.36,1) both; }
-.dp-c7 { animation: dpCardIn 0.55s 0.47s cubic-bezier(0.22,1,0.36,1) both; }
-
-/* ── Accent bar (same as Header) ── */
-@keyframes accentFlow{0%{background-position:0 0}100%{background-position:200% 0}}
-.dp-accent-dark  { height:2px; background:linear-gradient(90deg,transparent 0%,#1d4ed8 15%,#60a5fa 40%,#a78bfa 60%,#3b82f6 80%,transparent 100%); background-size:200% 100%; animation:accentFlow 4s linear infinite; }
-.dp-accent-light { height:2px; background:linear-gradient(90deg,transparent 0%,#3b82f6 15%,#93c5fd 40%,#6366f1 60%,#3b82f6 80%,transparent 100%); background-size:200% 100%; animation:accentFlow 4s linear infinite; }
-
-/* ── Refresh button ── */
-.dp-refresh-dark  { background:rgba(255,255,255,0.04); border:1px solid rgba(99,148,255,0.18); border-radius:10px; color:rgba(148,163,220,0.75); transition:all 0.2s; }
-.dp-refresh-dark:hover  { background:rgba(59,130,246,0.1); border-color:rgba(96,165,250,0.35); color:#93c5fd; box-shadow:0 0 16px rgba(59,130,246,0.15); }
-.dp-refresh-light { background:rgba(255,255,255,0.75); border:1px solid rgba(59,130,246,0.18); border-radius:10px; color:#4b6ea8; transition:all 0.2s; box-shadow:0 1px 4px rgba(59,130,246,0.08); }
-.dp-refresh-light:hover { background:rgba(59,130,246,0.08); border-color:rgba(59,130,246,0.35); color:#2563eb; }
-
-@keyframes spin { to{transform:rotate(360deg)} }
-.dp-spin { animation: spin 0.8s linear infinite; }
-
-/* ── Completion ring ── */
-.dp-ring-track-dark  { stroke: rgba(99,148,255,0.12); }
-.dp-ring-track-light { stroke: rgba(59,130,246,0.1);  }
-.dp-ring-fill { stroke: url(#ringGrad); stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1); }
+@keyframes dp2PageIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dp2CardIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.dp2-p {animation:dp2PageIn .5s cubic-bezier(.22,1,.36,1) both}
+.dp2-c1{animation:dp2CardIn .5s .04s cubic-bezier(.22,1,.36,1) both}
+.dp2-c2{animation:dp2CardIn .5s .09s cubic-bezier(.22,1,.36,1) both}
+.dp2-c3{animation:dp2CardIn .5s .14s cubic-bezier(.22,1,.36,1) both}
+.dp2-c4{animation:dp2CardIn .5s .19s cubic-bezier(.22,1,.36,1) both}
+.dp2-c5{animation:dp2CardIn .5s .24s cubic-bezier(.22,1,.36,1) both}
+.dp2-c6{animation:dp2CardIn .5s .30s cubic-bezier(.22,1,.36,1) both}
+.dp2-c7{animation:dp2CardIn .5s .36s cubic-bezier(.22,1,.36,1) both}
+.dp2-c8{animation:dp2CardIn .5s .42s cubic-bezier(.22,1,.36,1) both}
+@keyframes dp2Spin{to{transform:rotate(360deg)}}
+.dp2-spin{animation:dp2Spin .8s linear infinite}
+.dp2-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 `;
 
-/* ─────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────── */
-const getLast12Months = () => {
-  const names = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+/* ══════════════════════════════════════════════════════════════
+   § 2  HELPERS
+══════════════════════════════════════════════════════════════ */
+
+/** Returns last 12 month labels — "Jan 2025" format, oldest → newest. */
+const buildMonthLabels = () => {
+  const NAMES = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
   const now = new Date();
-  const month = now.getMonth();
-  const year  = now.getFullYear();
-  const result = [];
-  for (let i = 0; i < 12; i++) {
-    const m = (month - i + 12) % 12;
-    const y = m > month ? year - 1 : year;
-    result.unshift(`${names[m]} ${y}`);
-  }
-  return result;
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+    return `${NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  });
 };
 
-const formatCurrencyShort = (v) => {
-  if (v >= 1_000_000_000_000) return `${(v/1_000_000_000_000).toFixed(1)} T`;
-  if (v >= 1_000_000_000)     return `${(v/1_000_000_000).toFixed(1)} M`;
-  if (v >= 1_000_000)         return `${(v/1_000_000).toFixed(1)} Jt`;
-  if (v >= 1_000)             return `${(v/1_000).toFixed(1)} Rb`;
-  return new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(v);
+/** Firestore Timestamp → "Jan 2025" label. */
+const tsToLabel = (ts) => {
+  if (!ts) return null;
+  const NAMES = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+  const d = ts.toDate ? ts.toDate() : new Date((ts.seconds || 0) * 1000);
+  return `${NAMES[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-const formatCurrencyFull = (v) =>
-  new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(v);
+/** Short IDR formatter — "4,2 Jt", "1,5 M", etc. */
+const formatShort = (v) => {
+  if (v >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)} T`;
+  if (v >= 1_000_000_000)     return `${(v / 1_000_000_000).toFixed(1)} M`;
+  if (v >= 1_000_000)         return `${(v / 1_000_000).toFixed(1)} Jt`;
+  if (v >= 1_000)             return `${(v / 1_000).toFixed(1)} Rb`;
+  return new Intl.NumberFormat("id-ID", { style:"currency", currency:"IDR", maximumFractionDigits:0 }).format(v);
+};
 
-/* ─────────────────────────────────────────────
-   SUB-COMPONENTS
-───────────────────────────────────────────── */
-const Skel = ({ h, w, isDark }) => (
-  <div className={isDark?"dp-skel-dark":"dp-skel-light"} style={{ height:h, width:w||"100%" }} />
-);
+/** Full IDR formatter — "Rp 4.200.000". */
+const formatFull = (v) =>
+  new Intl.NumberFormat("id-ID", { style:"currency", currency:"IDR", maximumFractionDigits:0 }).format(v);
 
-const StatCardSkeleton = ({ isDark }) => (
-  <div className={`dp-card-${isDark?"dark":"light"}`} style={{ padding:"20px 22px" }}>
-    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
-      <Skel h={14} w="55%" isDark={isDark} />
-      <Skel h={36} w={36} isDark={isDark} />
+/** Relative time — "2 menit lalu", "Kemarin", etc. */
+const relativeTime = (date) => {
+  if (!date) return "—";
+  const mins = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
+  if (mins < 1)    return "Baru saja";
+  if (mins < 60)   return `${mins} menit lalu`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)    return `${hrs} jam lalu`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? "Kemarin" : `${days} hari lalu`;
+};
+
+/* ══════════════════════════════════════════════════════════════
+   § 3  usePortofolioData — custom hook
+══════════════════════════════════════════════════════════════ */
+const usePortofolioData = (bidang) => {
+  const [stats, setStats]           = useState({ total:0, selesai:0, proses:0, invoice:0, proforma:0 });
+  const [trends, setTrends]         = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [status, setStatus]         = useState({ loading:true, refreshing:false, error:null });
+  const mountedRef                  = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (!bidang) return;
+    setStatus((s) => isRefresh
+      ? { ...s, refreshing:true, error:null }
+      : { loading:true, refreshing:false, error:null }
+    );
+
+    try {
+      const ref    = collection(db, "orders");
+      const [allSnap, doneSnap] = await Promise.all([
+        getDocs(query(ref, where("portofolio", "==", bidang))),
+        getDocs(query(ref, where("portofolio", "==", bidang), where("statusOrder", "in", ["Selesai"]))),
+      ]);
+      if (!mountedRef.current) return;
+
+      const total   = allSnap.size;
+      const selesai = doneSnap.size;
+      let invoice = 0, proforma = 0;
+      const trendMap  = {};
+      const recentRaw = [];
+      const monthLabels = buildMonthLabels();
+
+      allSnap.forEach((doc) => {
+        const data = doc.data();
+        invoice  += Number(data.nilaiInvoice)  || 0;
+        proforma += Number(data.nilaiProforma) || 0;
+        const label = tsToLabel(data.tanggalOrder);
+        if (label) trendMap[label] = (trendMap[label] || 0) + 1;
+        if (data.tanggalOrder) {
+          recentRaw.push({
+            id:         doc.id,
+            nomorOrder: data.nomorOrder || doc.id.slice(0, 10).toUpperCase(),
+            status:     data.statusOrder || "Baru",
+            invoice:    data.nilaiInvoice || 0,
+            time:       data.tanggalOrder?.toDate
+                          ? data.tanggalOrder.toDate()
+                          : new Date((data.tanggalOrder?.seconds || 0) * 1000),
+          });
+        }
+      });
+
+      recentRaw.sort((a, b) => b.time - a.time);
+
+      if (!mountedRef.current) return;
+      setStats({ total, selesai, proses: total - selesai, invoice, proforma });
+      setTrends(monthLabels.map((m) => ({ bulan:m, jumlah: trendMap[m] || 0 })));
+      setActivities(recentRaw.slice(0, 6));
+      setStatus({ loading:false, refreshing:false, error:null });
+
+    } catch (err) {
+      console.error("[usePortofolioData]", err);
+      if (mountedRef.current)
+        setStatus({ loading:false, refreshing:false, error: err.message || "Gagal memuat data." });
+    }
+  }, [bidang]);
+
+  useEffect(() => { fetchData(false); }, [fetchData]);
+
+  const refresh = useCallback(() => fetchData(true), [fetchData]);
+  return { stats, trends, activities, status, refresh };
+};
+
+/* ══════════════════════════════════════════════════════════════
+   § 4  SUB-COMPONENTS  (all memoized)
+══════════════════════════════════════════════════════════════ */
+
+/* ── Skeleton block ── */
+const Skel = memo(({ h=16, w="100%", r=8 }) => (
+  <div className="dp2-skel" style={{ height:h, width:w, borderRadius:r }} />
+));
+
+/* ── KPI card skeleton ── */
+const KpiSkeleton = memo(() => (
+  <div className="dp2-kpi" style={{ pointerEvents:"none" }}>
+    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:14 }}>
+      <Skel h={12} w="55%" /><Skel h={34} w={34} r={10} />
     </div>
-    <Skel h={40} w="45%" isDark={isDark} />
-    <div style={{ marginTop:8 }}><Skel h={11} w="32%" isDark={isDark} /></div>
+    <Skel h={36} w="50%" />
+    <div style={{ marginTop:10 }}><Skel h={10} w="35%" /></div>
   </div>
-);
+));
 
-const ChartSkeleton = ({ isDark }) => (
-  <div style={{ height:380, display:"flex", alignItems:"flex-end", gap:10, padding:"0 8px" }}>
-    {[60,80,55,90,70,45,85,65,75,50,88,72].map((h,i) => (
-      <div key={i} className={isDark?"dp-skel-dark":"dp-skel-light"}
-           style={{ flex:1, height:`${h}%`, borderRadius:"6px 6px 0 0" }} />
-    ))}
-  </div>
-);
-
-/* Donut / ring chart untuk completion rate */
-const CompletionRing = ({ pct, isDark }) => {
-  const r = 54;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
+/* ── Completion ring (SVG donut) ── */
+const CompletionRing = memo(({ pct, isDark }) => {
+  const r = 44, circ = 2 * Math.PI * r;
   return (
-    <svg width={130} height={130} viewBox="0 0 130 130">
+    <svg width={110} height={110} viewBox="0 0 110 110"
+         role="img" aria-label={`${pct}% order selesai`}>
       <defs>
-        <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1d4ed8" />
-          <stop offset="100%" stopColor="#60a5fa" />
+        <linearGradient id="dp2RingGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   stopColor="#1a3a8f" />
+          <stop offset="100%" stopColor="#7fb3ff" />
         </linearGradient>
       </defs>
-      <circle cx={65} cy={65} r={r} fill="none" strokeWidth={10}
-              className={isDark?"dp-ring-track-dark":"dp-ring-track-light"} />
-      <circle cx={65} cy={65} r={r} fill="none" strokeWidth={10}
-              className="dp-ring-fill"
+      <circle cx={55} cy={55} r={r} fill="none" strokeWidth={9}
+              stroke={isDark ? "rgba(79,142,247,.1)" : "rgba(37,99,235,.1)"} />
+      <circle cx={55} cy={55} r={r} fill="none" strokeWidth={9}
+              stroke="url(#dp2RingGrad)" strokeLinecap="round"
               strokeDasharray={circ}
-              strokeDashoffset={offset}
-              transform="rotate(-90 65 65)" />
-      <text x={65} y={60} textAnchor="middle"
-            style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:700,
-                     fill: isDark ? "#60a5fa" : "#1d4ed8" }}>
+              strokeDashoffset={circ - (pct / 100) * circ}
+              transform="rotate(-90 55 55)"
+              style={{ transition:"stroke-dashoffset 1.2s cubic-bezier(.22,1,.36,1)" }} />
+      <text x={55} y={50} textAnchor="middle"
+            style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:700,
+                     fill: isDark ? "#7fb3ff" : "#1d4ed8" }}>
         {pct}%
       </text>
-      <text x={65} y={76} textAnchor="middle"
-            style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10,
-                     fill: isDark ? "rgba(99,148,255,0.5)" : "rgba(37,99,235,0.45)" }}>
+      <text x={55} y={65} textAnchor="middle"
+            style={{ fontFamily:"'Syne',sans-serif", fontSize:9,
+                     fill: isDark ? "rgba(99,148,255,.5)" : "rgba(37,99,235,.45)" }}>
         selesai
       </text>
     </svg>
   );
-};
+});
 
-const CustomTooltip = ({ active, payload, label, isDark }) => {
+/* ── Custom chart tooltip ── */
+const ChartTooltip = memo(({ active, payload, label, isDark }) => {
   if (!active || !payload?.length) return null;
-  const d = isDark;
   return (
-    <div className={d?"dp-tooltip-dark":"dp-tooltip-light"} style={{ padding:"10px 14px" }}>
-      <p style={{ fontWeight:600, marginBottom:4, color: d?"#93c5fd":"#1d4ed8" }}>{label}</p>
-      <p style={{ color: d?"#e2e8f5":"#334e7a" }}>Jumlah Order: <strong>{payload[0].value}</strong></p>
+    <div className={`dp2-tooltip ${isDark ? "dark" : "light"}`}>
+      <p className="dp2-tooltip-title">{label}</p>
+      <p className="dp2-tooltip-row">Jumlah Order: <strong>{payload[0]?.value ?? 0}</strong></p>
     </div>
   );
-};
+});
 
-/* ─────────────────────────────────────────────
-   MAIN COMPONENT
-───────────────────────────────────────────── */
+/* ── Chart skeleton ── */
+const ChartSkeleton = memo(() => (
+  <div style={{ height:280, display:"flex", alignItems:"flex-end", gap:8, padding:"0 4px" }}>
+    {[55,72,60,85,68,48,78,62,90,55,83,70].map((h, i) => (
+      <div key={i} className="dp2-skel" style={{ flex:1, height:`${h}%`, borderRadius:"6px 6px 0 0" }} />
+    ))}
+  </div>
+));
+
+/* ── Status pill ── */
+const StatusPill = memo(({ total, selesai, proses }) => {
+  const done  = total > 0 && selesai === total;
+  const empty = total === 0;
+  return (
+    <div className={`dp2-pill ${empty ? "empty" : done ? "done" : "wip"}`}>
+      {done  && <CheckCircleIcon style={{ width:13, height:13 }} />}
+      {empty && <ExclamationTriangleIcon style={{ width:13, height:13 }} />}
+      {!done && !empty && <ClockIcon style={{ width:13, height:13 }} />}
+      <span>
+        {empty ? "Belum ada order"
+               : done ? "✓ Semua order selesai!"
+               : `${proses} order masih dalam proses`}
+      </span>
+    </div>
+  );
+});
+
+/* ── Activity item ── */
+const ACT_META = {
+  Selesai: { dot:"done", text:"telah diselesaikan" },
+  Proses:  { dot:"wip",  text:"sedang diproses" },
+  Baru:    { dot:"new",  text:"order baru masuk" },
+};
+const ActivityItem = memo(({ item, bidang, isDark }) => {
+  const meta = ACT_META[item.status] ?? { dot:"new", text:item.status };
+  return (
+    <div className="dp2-act-item">
+      <div className={`dp2-act-dot ${meta.dot}`} />
+      <div style={{ flex:1 }}>
+        <div className="dp2-act-txt" style={{ color: isDark ? "#c8d0e8" : "#334e7a" }}>
+          <strong style={{ color: isDark ? "#e8ecf8" : "#1e3a5f" }}>{item.nomorOrder}</strong>
+          {" "}{meta.text}
+          {item.invoice > 0 && (
+            <span style={{ marginLeft:4, fontSize:11,
+                           color: isDark ? "#22d3a0" : "#059669",
+                           fontFamily:"'JetBrains Mono',monospace" }}>
+              · {formatFull(item.invoice)}
+            </span>
+          )}
+        </div>
+        <div className="dp2-act-time">{relativeTime(item.time)} · {bidang}</div>
+      </div>
+    </div>
+  );
+});
+
+/* ── Trend bar chart ── */
+const TrendChart = memo(({ data, isDark }) => {
+  const avg       = data.length ? Math.round(data.reduce((s, d) => s + d.jumlah, 0) / data.length) : 0;
+  const axisColor = isDark ? "rgba(74,85,128,.9)"    : "rgba(37,99,235,.5)";
+  const gridColor = isDark ? "rgba(255,255,255,.04)" : "rgba(37,99,235,.06)";
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top:8, right:8, left:-20, bottom:4 }}>
+        <defs>
+          <linearGradient id="dp2BarGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={isDark ? "#4f8ef7" : "#2563eb"} stopOpacity={0.9} />
+            <stop offset="100%" stopColor={isDark ? "#1a3a8f" : "#93c5fd"} stopOpacity={0.45} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+        <XAxis dataKey="bulan"
+               tick={{ fill:axisColor, fontFamily:"'Syne',sans-serif", fontSize:10 }}
+               axisLine={{ stroke:gridColor }} tickLine={false} />
+        <YAxis tick={{ fill:axisColor, fontFamily:"'JetBrains Mono',monospace", fontSize:10 }}
+               axisLine={false} tickLine={false} />
+        <Tooltip content={<ChartTooltip isDark={isDark} />}
+                 cursor={{ fill: isDark ? "rgba(79,142,247,.05)" : "rgba(37,99,235,.05)", radius:6 }} />
+        {avg > 0 && (
+          <ReferenceLine y={avg}
+            stroke={isDark ? "rgba(34,211,160,.5)" : "rgba(5,150,105,.5)"}
+            strokeDasharray="5 4" strokeWidth={1.5}
+            label={{ value:`Rata-rata: ${avg}`, position:"insideTopRight",
+                     fill: isDark ? "rgba(34,211,160,.7)" : "rgba(5,150,105,.7)",
+                     fontSize:9, fontFamily:"'JetBrains Mono',monospace" }} />
+        )}
+        <Bar dataKey="jumlah" name="Order" fill="url(#dp2BarGrad)" radius={[6,6,0,0]} barSize={20} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+});
+
+/* ── Error banner ── */
+const ErrorBanner = memo(({ message, onRetry }) => (
+  <div className="dp2-error">
+    <ExclamationTriangleIcon style={{ width:18, height:18, flexShrink:0 }} />
+    <div style={{ flex:1 }}>
+      <p style={{ fontWeight:600, fontSize:13, marginBottom:2 }}>Gagal Memuat Data</p>
+      <p style={{ fontSize:11, opacity:.8 }}>{message}</p>
+    </div>
+    <button className="dp2-retry-btn" onClick={onRetry}>Coba Lagi</button>
+  </div>
+));
+
+/* ══════════════════════════════════════════════════════════════
+   § 5  MAIN COMPONENT
+══════════════════════════════════════════════════════════════ */
+
+/* Quick actions config — sesuaikan path sesuai routing Anda */
+const QUICK_ACTIONS = [
+  { label:"Buat Order Baru",    desc:"Input order portofolio",  path:"/order/baru",    Icon:PlusCircleIcon },
+  { label:"Daftar Semua Order", desc:"Lihat & kelola order",    path:"/order/daftar",  Icon:ListBulletIcon },
+  { label:"Laporan ",   desc:"Penyelesaian Pekerjaan Operasional",      path:"/laporan",       Icon:DocumentTextIcon },
+];
+
 const DashboardPortofolio = () => {
   const navigate          = useNavigate();
   const { isDark }        = useTheme();
-  const { activeUser, logout } = useUser(); // ← reaktif saat switch role
+  const { activeUser }    = useUser();
   const d                 = isDark;
 
-  // userData selalu sinkron dengan activeUser dari context
-  const userData    = activeUser;
-  const bidangLabel = userData?.bidang?.toUpperCase() || "—";
-
-  const [totalOrders,         setTotalOrders]         = useState(0);
-  const [completedOrders,     setCompletedOrders]     = useState(0);
-  const [pendingOrders,       setPendingOrders]       = useState(0);
-  const [totalRevenue,        setTotalRevenue]        = useState(0);
-  const [totalRevenueProforma,setTotalRevenueProforma]= useState(0);
-  const [orderTrends,         setOrderTrends]         = useState([]);
-  const [isLoading,           setIsLoading]           = useState(true);
-  const [isRefresh,           setIsRefresh]           = useState(false);
-  const [error,               setError]               = useState(null);
-  const [mounted,             setMounted]             = useState(false);
-  // FIX: Tunggu 1 tick sebelum jalankan guard RBAC agar UserContext
-  // sempat membaca localStorage. Tanpa ini, userData = null di render
-  // pertama → redirect palsu ke login meskipun user sudah login.
-  const [authReady,           setAuthReady]           = useState(false);
+  /* ── Auth guard ── */
+  const [authReady, setAuthReady] = useState(false);
+  const [mounted,   setMounted]   = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setAuthReady(true), 50);
+    const t = setTimeout(() => setAuthReady(true), 60);
     return () => clearTimeout(t);
   }, []);
 
-  // Guard akses — hanya dijalankan setelah authReady = true
   useEffect(() => {
     if (!authReady) return;
     setMounted(true);
-    if (!userData) {
-      navigate("/");
-      return;
-    }
-    if (userData.peran?.toLowerCase() !== "admin portofolio") {
+    if (!activeUser || activeUser.peran?.toLowerCase() !== "admin portofolio") {
       navigate("/");
     }
-  }, [authReady, userData]);
+  }, [authReady, activeUser, navigate]);
 
-  // Re-fetch otomatis setiap kali bidang berubah (akibat switch role)
-  useEffect(() => {
-    if (userData?.bidang && userData?.peran?.toLowerCase() === "admin portofolio") {
-      fetchOrderSummary(userData.bidang);
-    }
-  }, [userData?.bidang, userData?.peran]);
+  /* ── Data ── */
+  const bidang      = activeUser?.bidang ?? null;
+  const bidangLabel = (bidang ?? "—").toUpperCase();
 
-  const fetchOrderSummary = async (userBidang, isManualRefresh = false) => {
-    if (isManualRefresh) setIsRefresh(true);
-    else setIsLoading(true);
-    setError(null);
+  const { stats, trends, activities, status, refresh } = usePortofolioData(bidang);
+  const { loading, refreshing, error } = status;
 
-    try {
-      const ordersRef   = collection(db, "orders");
-      const totalSnap   = await getDocs(query(ordersRef, where("portofolio","==",userBidang)));
-      const closedSnap  = await getDocs(query(ordersRef,
-        where("portofolio","==",userBidang),
-        where("statusOrder","in",["Selesai"])
-      ));
+  /* ── Derived ── */
+  const pct          = stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0;
+  const totalTrend   = useMemo(() => trends.reduce((s, t) => s + t.jumlah, 0), [trends]);
 
-      const total     = totalSnap.size;
-      const completed = closedSnap.size;
-      setTotalOrders(total);
-      setCompletedOrders(completed);
-      setPendingOrders(total - completed);
-
-      let revenue = 0, revenueProforma = 0;
-      const trends = {};
-      const months = getLast12Months();
-
-      totalSnap.forEach((doc) => {
-        const data = doc.data();
-        revenue         += Number(data.nilaiInvoice)  || 0;
-        revenueProforma += Number(data.nilaiProforma) || 0;
-        if (data.tanggalOrder?.seconds) {
-          const key = new Date(data.tanggalOrder.seconds * 1000)
-            .toLocaleDateString("id-ID",{month:"short",year:"numeric"});
-          trends[key] = (trends[key] || 0) + 1;
-        }
-      });
-
-      setTotalRevenue(revenue);
-      setTotalRevenueProforma(revenueProforma);
-      setOrderTrends(months.map((m) => ({ bulan:m, jumlah: trends[m] || 0 })));
-    } catch (err) {
-      console.error("Error:", err);
-      setError("Tidak dapat memuat data. Silakan coba lagi.");
-    } finally {
-      setIsLoading(false);
-      setIsRefresh(false);
-    }
-  };
-
-  const pct         = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
-  const axisColor   = d ? "rgba(99,148,255,0.4)"  : "rgba(37,99,235,0.35)";
-  const gridColor   = d ? "rgba(99,148,255,0.07)" : "rgba(37,99,235,0.07)";
-
-  const statusPillClass = () => {
-    if (totalOrders === 0) return `dp-status-pill-empty-${d?"dark":"light"}`;
-    if (completedOrders === totalOrders) return `dp-status-pill-done-${d?"dark":"light"}`;
-    return `dp-status-pill-wip-${d?"dark":"light"}`;
-  };
-  const statusPillText = () => {
-    if (totalOrders === 0) return "Belum ada order";
-    if (completedOrders === totalOrders) return "✓ Semua order selesai!";
-    return `${pendingOrders} order masih dalam proses`;
-  };
-
-  /* stat cards */
-  const statCards = [
+  /* ── KPI cards config (memoized — only rebuilds when stats/bidang change) ── */
+  const kpiCards = useMemo(() => [
     {
-      label: `Total Order — ${bidangLabel}`,
-      display: totalOrders.toLocaleString("id-ID"),
-      numClass: "dp-num-blue",
-      glow: "dp-glow-blue",
-      anim: "dp-c1",
-      icon: <ClipboardDocumentListIcon style={{ width:20, height:20, color: d?"#60a5fa":"#2563eb" }} />,
+      key:"total",   label:`Total Order — ${bidangLabel}`,
+      value: stats.total.toLocaleString("id-ID"),
+      badge:{ text:`${stats.total} total`, type:"up" },
+      color:"blue",   anim:"dp2-c1",
+      Icon: ListBulletIcon,
     },
     {
-      label: "Order Selesai",
-      display: completedOrders.toLocaleString("id-ID"),
-      sub: "Status: Selesai",
-      numClass: "dp-num-green",
-      glow: "dp-glow-green",
-      anim: "dp-c2",
-      icon: <CheckCircleIcon style={{ width:20, height:20, color: d?"#34d399":"#059669" }} />,
+      key:"selesai", label:"Order Selesai",
+      value: stats.selesai.toLocaleString("id-ID"),
+      badge:{ text:"Status: Selesai", type:"up" },
+      color:"green",  anim:"dp2-c2",
+      Icon: CheckCircleIcon,
     },
     {
-      label: "Order Dalam Proses",
-      display: pendingOrders.toLocaleString("id-ID"),
-      sub: "Sedang dalam proses",
-      numClass: "dp-num-orange",
-      glow: "dp-glow-orange",
-      anim: "dp-c3",
-      icon: <ClockIcon style={{ width:20, height:20, color: d?"#fb923c":"#ea580c" }} />,
+      key:"proses",  label:"Dalam Proses",
+      value: stats.proses.toLocaleString("id-ID"),
+      badge:{ text:"Sedang berjalan", type:"warn" },
+      color:"orange", anim:"dp2-c3",
+      Icon: ClockIcon,
     },
     {
-      label: `Nilai Invoice (Fee) — ${bidangLabel}`,
-      display: formatCurrencyShort(totalRevenue),
-      sub: formatCurrencyFull(totalRevenue),
-      numClass: "dp-num-emerald",
-      glow: "dp-glow-emerald",
-      anim: "dp-c4",
-      icon: <CurrencyDollarIcon style={{ width:20, height:20, color: d?"#34d399":"#059669" }} />,
+      key:"invoice", label:`Nilai Invoice (Fee) — ${bidangLabel}`,
+      value: formatShort(stats.invoice),
+      sub:   formatFull(stats.invoice),
+      color:"purple", anim:"dp2-c4",
+      Icon: DocumentTextIcon,
     },
     {
-      label: `Nilai Proforma (PAD) — ${bidangLabel}`,
-      display: formatCurrencyShort(totalRevenueProforma),
-      sub: formatCurrencyFull(totalRevenueProforma),
-      numClass: "dp-num-purple",
-      glow: "dp-glow-purple",
-      anim: "dp-c5",
-      icon: <CurrencyDollarIcon style={{ width:20, height:20, color: d?"#a78bfa":"#7c3aed" }} />,
+      key:"proforma", label:`Nilai Proforma (PAD) — ${bidangLabel}`,
+      value: formatShort(stats.proforma),
+      sub:   formatFull(stats.proforma),
+      color:"teal",   anim:"dp2-c5",
+      Icon: ChartBarIcon,
     },
-  ];
+  ], [stats, bidangLabel]);
+
+  /* ── Handlers ── */
+  const handleRefresh     = useCallback(() => { if (!refreshing) refresh(); }, [refresh, refreshing]);
+  const handleQuickAction = useCallback((path) => navigate(path), [navigate]);
+
+  if (!authReady) return null;
 
   return (
     <>
       <style>{STYLES}</style>
-      <div className={`dp-root dp-bg-${d?"dark":"light"} ${mounted?"dp-page-in":"opacity-0"}`}
-           style={{ padding:"28px 20px", transition:"background 0.4s ease" }}>
-        <div style={{ maxWidth:1280, margin:"0 auto" }}>
 
-          {/* ══════ PAGE HEADER ══════ */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, flexWrap:"wrap", gap:12 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              {/* Icon */}
-              <div className={`dp-icon-${d?"dark":"light"}`}
-                   style={{ width:42, height:42, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <ChartBarIcon style={{ width:22, height:22, color: d?"#60a5fa":"#2563eb" }} />
-              </div>
-              <div>
-                <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                  <h2 className={`dp-title-${d?"dark":"light"}`}
-                      style={{ fontSize:22, fontWeight:700, lineHeight:1.2, letterSpacing:"-0.01em" }}>
-                    Dashboard Portofolio
-                  </h2>
-                  {/* Bidang chip */}
-                  <div className={`dp-chip-${d?"dark":"light"}`}
-                       style={{ padding:"3px 12px", display:"inline-flex", alignItems:"center" }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.1em", color:"white" }}>
-                      {bidangLabel}
-                    </span>
-                  </div>
-                </div>
-                <p className={`dp-sub-${d?"dark":"light"}`} style={{ fontSize:12, marginTop:3 }}>
-                  SIMDOR — Ringkasan Order &amp; Keuangan Portofolio
-                </p>
+      <main className={`dp2 ${d ? "dark" : "light"} ${mounted ? "dp2-p" : ""}`}
+            role="main" aria-label="Dashboard Portofolio"
+            style={{ transition:"background .35s ease" }}>
+
+        <span className="dp2-sr">Dashboard Portofolio SIMDOR — ringkasan statistik order dan keuangan</span>
+
+        <div className="dp2-inner">
+
+          {/* ══ HEADER ══ */}
+          <header className="dp2-header dp2-p">
+            <div className="dp2-header-left">
+              <nav className="dp2-breadcrumb" aria-label="Navigasi halaman">
+                <span>SIMDOR</span><span aria-hidden>›</span>
+                <span>Portofolio</span><span aria-hidden>›</span>
+                <span>Dashboard</span>
+              </nav>
+              <h1 className="dp2-page-title">Dashboard <em>Portofolio</em></h1>
+              <div className="dp2-page-meta">
+                <div className="dp2-live-dot" aria-hidden />
+                <span>Ringkasan order &amp; keuangan real-time</span>
               </div>
             </div>
-
-            {/* Refresh */}
-            <button
-              onClick={() => userData?.bidang && fetchOrderSummary(userData.bidang, true)}
-              disabled={isRefresh}
-              className={`dp-refresh-${d?"dark":"light"}`}
-              style={{ width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
-              title="Refresh data"
-            >
-              <ArrowPathIcon style={{ width:17, height:17 }} className={isRefresh?"dp-spin":""} />
-            </button>
-          </div>
-
-          {/* ══════ ERROR BANNER ══════ */}
-          {error && (
-            <div className={`dp-error-${d?"dark":"light"}`}
-                 style={{ padding:"14px 18px", marginBottom:24, display:"flex", alignItems:"center", gap:12 }}>
-              <ExclamationTriangleIcon style={{ width:20, height:20, flexShrink:0 }} />
-              <div>
-                <p style={{ fontWeight:600, fontSize:13 }}>Gagal Memuat Data</p>
-                <p style={{ fontSize:12, marginTop:2, opacity:0.8 }}>{error}</p>
-              </div>
+            <div className="dp2-header-right">
+              <div className="dp2-badge" aria-label={`Bidang: ${bidangLabel}`}>{bidangLabel}</div>
+              <button className="dp2-btn-icon" onClick={handleRefresh}
+                      disabled={refreshing || loading} aria-label="Refresh data" title="Refresh data">
+                <ArrowPathIcon style={{ width:17, height:17 }} className={refreshing ? "dp2-spin" : ""} />
+              </button>
             </div>
-          )}
+          </header>
 
-          {/* ══════ STAT CARDS ══════ */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:16, marginBottom:20 }}>
-            {isLoading
-              ? [1,2,3,4,5].map((i) => <StatCardSkeleton key={i} isDark={d} />)
-              : statCards.map((card) => (
-                  <div key={card.label}
-                       className={`dp-card-${d?"dark":"light"} ${card.anim} ${card.glow}`}
-                       style={{ padding:"20px 22px" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
-                      <span className={`dp-label-${d?"dark":"light"}`} style={{ lineHeight:1.4, maxWidth:"calc(100% - 48px)" }}>
-                        {card.label}
-                      </span>
-                      <div className={`dp-icon-${d?"dark":"light"}`}
-                           style={{ width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                        {card.icon}
+          <div className="dp2-accent" aria-hidden />
+
+          {/* ══ ERROR ══ */}
+          {error && <ErrorBanner message={error} onRetry={handleRefresh} />}
+
+          {/* ══ KPI CARDS ══ */}
+          <section className="dp2-kpi-grid" aria-label="Statistik utama">
+            {loading
+              ? [1,2,3,4,5].map((i) => <KpiSkeleton key={i} />)
+              : kpiCards.map(({ key, label, value, sub, badge, color, anim, Icon }) => (
+                  <article key={key} className={`dp2-kpi kpi-${color} ${anim}`} aria-label={label}>
+                    <div className="dp2-kpi-top">
+                      <p className="dp2-kpi-label">{label}</p>
+                      <div className={`dp2-kpi-ico ico-${color}`} aria-hidden>
+                        <Icon style={{ width:17, height:17 }} />
                       </div>
                     </div>
-                    <p className={card.numClass}
-                       style={{ fontSize:32, fontWeight:700, lineHeight:1, fontFamily:"'DM Mono',monospace" }}>
-                      {card.display}
-                    </p>
-                    {card.sub && (
-                      <p style={{ fontSize:10.5, marginTop:6, fontFamily:"'DM Mono',monospace",
-                                  color: d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.38)" }}>
-                        {card.sub}
-                      </p>
-                    )}
-                  </div>
+                    <p className={`dp2-kpi-val val-${color}`}>{value}</p>
+                    {sub   && <p className="dp2-kpi-sub">{sub}</p>}
+                    {badge && <div className={`dp2-kpi-badge ${badge.type}`}>{badge.text}</div>}
+                  </article>
                 ))
             }
-          </div>
+          </section>
 
-          {/* ══════ PROGRESS CARD ══════ */}
-          <div className={`dp-card-${d?"dark":"light"} dp-c6`} style={{ marginBottom:20 }}>
-            {/* Header */}
-            <div className={`dp-divider-${d?"dark":"light"}`}
-                 style={{ padding:"16px 22px", display:"flex", alignItems:"center", gap:10 }}>
-              <div className={`dp-icon-${d?"dark":"light"}`}
-                   style={{ width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <CheckCircleIcon style={{ width:16, height:16, color: d?"#34d399":"#059669" }} />
+          {/* ══ ROW 2 — Progress + Activity ══ */}
+          <div className="dp2-row2">
+
+            {/* Progress card */}
+            <section className="dp2-card dp2-c6" aria-label="Progress penyelesaian order">
+              <div className="dp2-card-head">
+                <div className="dp2-card-ico ico-green" aria-hidden>
+                  <ChartBarIcon style={{ width:14, height:14 }} />
+                </div>
+                <div>
+                  <p className="dp2-card-title">Progress Penyelesaian</p>
+                  <p className="dp2-card-sub">Rasio selesai vs total order</p>
+                </div>
               </div>
-              <div>
-                <p className={`dp-section-title-${d?"dark":"light"}`}>Progress Penyelesaian Order</p>
-                <p className={`dp-section-sub-${d?"dark":"light"}`}>Rasio selesai vs total order portofolio</p>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding:"20px 22px 24px" }}>
-              {isLoading
-                ? (
-                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                    <Skel h={14} w="40%" isDark={d} />
-                    <Skel h={10} isDark={d} />
-                    <div style={{ display:"flex", gap:16, marginTop:8 }}>
-                      <Skel h={80} isDark={d} />
-                      <Skel h={80} isDark={d} />
-                      <Skel h={80} isDark={d} />
-                    </div>
-                  </div>
-                )
-                : (
-                  <div style={{ display:"flex", alignItems:"center", gap:28, flexWrap:"wrap" }}>
-                    {/* Ring */}
-                    {!isLoading && <CompletionRing pct={pct} isDark={d} />}
-
-                    {/* Right side */}
-                    <div style={{ flex:1, minWidth:200 }}>
-                      {/* Bar */}
-                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                        <span style={{ fontSize:12, color: d?"rgba(148,163,220,0.7)":"#4b6ea8" }}>
-                          {completedOrders} dari {totalOrders} order selesai
-                        </span>
-                        <span style={{ fontSize:12, fontWeight:700, fontFamily:"'DM Mono',monospace",
-                                       color: d?"#60a5fa":"#1d4ed8" }}>
-                          {pct}%
-                        </span>
-                      </div>
-                      <div className={`dp-track-${d?"dark":"light"}`} style={{ marginBottom:18 }}>
-                        <div className="dp-fill" style={{ width:`${pct}%` }} />
-                      </div>
-
-                      {/* Milestone chips */}
-                      <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
-                        {[
-                          { label:"Total Order",   val: totalOrders,     color: d?"#60a5fa":"#2563eb" },
-                          { label:"Selesai",        val: completedOrders, color: d?"#34d399":"#059669" },
-                          { label:"Dalam Proses",   val: pendingOrders,   color: d?"#fb923c":"#ea580c" },
-                        ].map((m) => (
-                          <div key={m.label} className={`dp-milestone-${d?"dark":"light"}`}
-                               style={{ padding:"10px 16px", flex:"1 1 80px", textAlign:"center", minWidth:80 }}>
-                            <p style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:700, color:m.color, lineHeight:1 }}>
-                              {m.val}
-                            </p>
-                            <p className={`dp-milestone-label-${d?"dark":"light"}`} style={{ marginTop:4 }}>
-                              {m.label}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Status pill */}
-                      <div className={statusPillClass()}
-                           style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"7px 14px", fontSize:12, fontWeight:500 }}>
-                        {totalOrders > 0 && completedOrders === totalOrders
-                          ? <CheckCircleIcon style={{ width:14, height:14 }} />
-                          : totalOrders === 0
-                            ? <ExclamationTriangleIcon style={{ width:14, height:14 }} />
-                            : <ClockIcon style={{ width:14, height:14 }} />
-                        }
-                        {statusPillText()}
-                      </div>
-                    </div>
-                  </div>
-                )
-              }
-            </div>
-          </div>
-
-          {/* ══════ TREND CHART ══════ */}
-          <div className={`dp-card-${d?"dark":"light"} dp-c7`}>
-            {/* Header */}
-            <div className={`dp-divider-${d?"dark":"light"}`}
-                 style={{ padding:"16px 22px", display:"flex", alignItems:"center", gap:10 }}>
-              <div className={`dp-icon-${d?"dark":"light"}`}
-                   style={{ width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <ChartBarIcon style={{ width:16, height:16, color: d?"#60a5fa":"#2563eb" }} />
-              </div>
-              <div>
-                <p className={`dp-section-title-${d?"dark":"light"}`}>Tren Order per Bulan</p>
-                <p className={`dp-section-sub-${d?"dark":"light"}`}>12 bulan terakhir berdasarkan tanggal order</p>
-              </div>
-            </div>
-
-            {/* Chart */}
-            <div style={{ padding:"20px 22px 24px" }}>
-              {isLoading
-                ? <ChartSkeleton isDark={d} />
-                : orderTrends.length > 0
+              <div className="dp2-card-body">
+                {loading
                   ? (
-                    <ResponsiveContainer width="100%" height={380}>
-                      <BarChart data={orderTrends} margin={{ top:8, right:8, left:-16, bottom:4 }}>
-                        <defs>
-                          <linearGradient id="dpBarDark" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="#3b82f6" stopOpacity={0.9} />
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0.4} />
-                          </linearGradient>
-                          <linearGradient id="dpBarLight" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="#2563eb" stopOpacity={0.85} />
-                            <stop offset="100%" stopColor="#93c5fd" stopOpacity={0.45} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                        <XAxis
-                          dataKey="bulan"
-                          fontSize={11}
-                          tick={{ fill:axisColor, fontFamily:"'DM Sans',sans-serif" }}
-                          axisLine={{ stroke:gridColor }}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          fontSize={11}
-                          domain={["auto","auto"]}
-                          tick={{ fill:axisColor, fontFamily:"'DM Mono',monospace" }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(v) => v.toLocaleString()}
-                        />
-                        <Tooltip
-                          content={<CustomTooltip isDark={d} />}
-                          cursor={{ fill: d?"rgba(99,148,255,0.05)":"rgba(37,99,235,0.05)", radius:6 }}
-                        />
-                        <Legend wrapperStyle={{ fontSize:12, fontFamily:"'DM Sans',sans-serif",
-                                                color: d?"rgba(148,163,220,0.7)":"#4b6ea8" }} />
-                        <Bar
-                          dataKey="jumlah"
-                          name="Jumlah Order"
-                          fill={d?"url(#dpBarDark)":"url(#dpBarLight)"}
-                          radius={[6,6,0,0]}
-                          barSize={22}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                      <Skel h={110} w={110} r={55} />
+                      <Skel h={12} w="70%" /><Skel h={8} />
+                      <div style={{ display:"flex", gap:8 }}><Skel h={60} /><Skel h={60} /><Skel h={60} /></div>
+                    </div>
                   )
                   : (
-                    <div style={{ height:300, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10 }}>
-                      <ExclamationTriangleIcon style={{ width:36, height:36, color: d?"rgba(99,148,255,0.3)":"rgba(37,99,235,0.3)" }} />
-                      <p style={{ fontSize:13, color: d?"rgba(99,148,255,0.4)":"rgba(37,99,235,0.4)" }}>
+                    <div className="dp2-ring-wrap">
+                      <CompletionRing pct={pct} isDark={d} />
+                      <div className="dp2-prog-info">
+                        <div className="dp2-prog-row">
+                          <span className="dp2-prog-lbl">{stats.selesai} dari {stats.total} order selesai</span>
+                          <span className="dp2-prog-pct">{pct}%</span>
+                        </div>
+                        <div className="dp2-prog-track" role="progressbar"
+                             aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                          <div className="dp2-prog-fill" style={{ width:`${pct}%` }} />
+                        </div>
+                        <div className="dp2-milestones">
+                          {[
+                            { lbl:"Total",   val:stats.total,   color: d?"#7fb3ff":"#1d4ed8" },
+                            { lbl:"Selesai", val:stats.selesai, color: d?"#88f0ce":"#059669" },
+                            { lbl:"Proses",  val:stats.proses,  color: d?"#ffb380":"#ea580c" },
+                          ].map((m) => (
+                            <div key={m.lbl} className="dp2-ms">
+                              <p className="dp2-ms-val" style={{ color:m.color }}>{m.val}</p>
+                              <p className="dp2-ms-lbl">{m.lbl}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <StatusPill total={stats.total} selesai={stats.selesai} proses={stats.proses} />
+                      </div>
+                    </div>
+                  )
+                }
+              </div>
+            </section>
+
+            {/* Activity feed */}
+            <section className="dp2-card dp2-c7" aria-label="Aktivitas terkini">
+              <div className="dp2-card-head">
+                <div className="dp2-card-ico ico-blue" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+                       style={{ width:14, height:14 }}>
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="dp2-card-title">Aktivitas Terkini</p>
+                  <p className="dp2-card-sub">Update order terbaru portofolio</p>
+                </div>
+              </div>
+              <div className="dp2-card-body" style={{ padding:"10px 18px" }}>
+                {loading
+                  ? (
+                    <div style={{ display:"flex", flexDirection:"column", gap:14, paddingTop:6 }}>
+                      {[1,2,3,4].map((i) => (
+                        <div key={i} style={{ display:"flex", gap:10, alignItems:"center" }}>
+                          <Skel h={8} w={8} r={8} />
+                          <div style={{ flex:1 }}>
+                            <Skel h={11} w="65%" />
+                            <div style={{ marginTop:4 }}><Skel h={9} w="40%" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                  : activities.length > 0
+                    ? (
+                      <div className="dp2-act-list" role="feed">
+                        {activities.map((item) => (
+                          <ActivityItem key={item.id} item={item} bidang={bidangLabel} isDark={d} />
+                        ))}
+                      </div>
+                    )
+                    : (
+                      <p style={{ textAlign:"center", padding:"24px 0", fontSize:12,
+                                  color: d?"rgba(74,85,128,.7)":"rgba(37,99,235,.4)" }}>
+                        Belum ada aktivitas tercatat.
+                      </p>
+                    )
+                }
+              </div>
+            </section>
+          </div>
+
+          {/* ══ TREND CHART ══ */}
+          <section className="dp2-card-full dp2-c8" aria-label="Tren order per bulan">
+            <div className="dp2-card-head">
+              <div className="dp2-card-ico ico-blue" aria-hidden>
+                <ChartBarIcon style={{ width:14, height:14 }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <p className="dp2-card-title">Tren Order per Bulan</p>
+                <p className="dp2-card-sub">12 bulan terakhir berdasarkan tanggal order</p>
+              </div>
+              <div className="dp2-chart-legend" aria-hidden>
+                <span>
+                  <span className="dp2-legend-sq" style={{ background: d?"#4f8ef7":"#2563eb" }} />
+                  Jumlah Order
+                </span>
+                <span>
+                  <span style={{ width:10, height:2, display:"inline-block", verticalAlign:"middle",
+                                 borderTop:`1.5px dashed ${d?"#22d3a0":"#059669"}` }} />
+                  Rata-rata
+                </span>
+              </div>
+            </div>
+
+            <div style={{ padding:"18px 18px 8px" }}>
+              {loading
+                ? <ChartSkeleton />
+                : trends.length > 0
+                  ? <TrendChart data={trends} isDark={d} />
+                  : (
+                    <div style={{ height:280, display:"flex", flexDirection:"column",
+                                  alignItems:"center", justifyContent:"center", gap:10 }}>
+                      <ChartBarIcon style={{ width:36, height:36,
+                                             color: d?"rgba(79,142,247,.3)":"rgba(37,99,235,.3)" }} />
+                      <p style={{ fontSize:13, color: d?"rgba(79,142,247,.4)":"rgba(37,99,235,.4)" }}>
                         Tidak ada data tren untuk ditampilkan.
                       </p>
                     </div>
                   )
               }
             </div>
-          </div>
+
+            <div className="dp2-chart-footer">
+              <span><ChartBarIcon style={{ width:13, height:13 }} /> Total {totalTrend} order dalam 12 bulan terakhir</span>
+              <span style={{ color: d?"#22d3a0":"#059669" }}>↑ Portofolio {bidangLabel}</span>
+            </div>
+          </section>
+
+          {/* ══ QUICK ACTIONS ══ */}
+          <section className="dp2-card-full" style={{ marginBottom:0 }} aria-label="Aksi cepat">
+            <div className="dp2-card-head">
+              <div className="dp2-card-ico ico-orange" aria-hidden>
+                <BoltIcon style={{ width:14, height:14 }} />
+              </div>
+              <div>
+                <p className="dp2-card-title">Aksi Cepat</p>
+                <p className="dp2-card-sub">Navigasi ke fitur utama</p>
+              </div>
+            </div>
+            <div className="dp2-qa-grid" role="list">
+              {QUICK_ACTIONS.map(({ label, desc, path, Icon }) => (
+                <button key={label} className="dp2-qa" role="listitem"
+                        onClick={() => handleQuickAction(path)} aria-label={label}>
+                  <div className="dp2-qa-ico" aria-hidden><Icon style={{ width:17, height:17 }} /></div>
+                  <span className="dp2-qa-lbl">{label}</span>
+                  <span className="dp2-qa-desc">{desc}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
         </div>
-      </div>
+      </main>
     </>
   );
 };
 
-export default DashboardPortofolio;
+export default memo(DashboardPortofolio);
