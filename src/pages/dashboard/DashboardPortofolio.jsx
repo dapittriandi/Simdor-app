@@ -519,6 +519,7 @@ const ActivityItem = memo(({ item, bidang, isDark }) => {
 });
 
 /* ── Trend bar chart ── */
+// eslint-disable-next-line react/display-name
 const TrendChart = memo(({ data, isDark }) => {
   const avg       = data.length ? Math.round(data.reduce((s, d) => s + d.jumlah, 0) / data.length) : 0;
   const axisColor = isDark ? "rgba(74,85,128,.9)"    : "rgba(37,99,235,.5)";
@@ -571,10 +572,10 @@ const ErrorBanner = memo(({ message, onRetry }) => (
 ══════════════════════════════════════════════════════════════ */
 
 /* Quick actions config — sesuaikan path sesuai routing Anda */
-const QUICK_ACTIONS = [
-  { label:"Buat Order Baru",    desc:"Input order portofolio",  path:"/order/baru",    Icon:PlusCircleIcon },
-  { label:"Daftar Semua Order", desc:"Lihat & kelola order",    path:"/order/daftar",  Icon:ListBulletIcon },
-  { label:"Laporan ",   desc:"Penyelesaian Pekerjaan Operasional",      path:"/laporan",       Icon:DocumentTextIcon },
+const buildQuickActions = (bidang) => [
+  { label:"Buat Order Baru",    desc:"Input order portofolio",             path:`/orders/${bidang}/create`, Icon:PlusCircleIcon  },
+  { label:"Daftar Semua Order", desc:"Lihat & kelola order",               path:`/orders/${bidang}`,        Icon:ListBulletIcon  },
+  { label:"Laporan",            desc:"Penyelesaian Pekerjaan Operasional", path:"/laporan",                 Icon:DocumentTextIcon },
 ];
 
 const DashboardPortofolio = () => {
@@ -610,6 +611,7 @@ const DashboardPortofolio = () => {
   /* ── Derived ── */
   const pct          = stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0;
   const totalTrend   = useMemo(() => trends.reduce((s, t) => s + t.jumlah, 0), [trends]);
+  const QUICK_ACTIONS = useMemo(() => buildQuickActions(bidang ?? ""), [bidang]);
 
   /* ── KPI cards config (memoized — only rebuilds when stats/bidang change) ── */
   const kpiCards = useMemo(() => [
